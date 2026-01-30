@@ -1,0 +1,11 @@
+# State files (user data)
+state.json
+state.bak.json
+*.json.tmp
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
