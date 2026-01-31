@@ -1040,9 +1040,10 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
             <span id="unlinkIconSlot" style="display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;"></span>
           </button>
           <select id="unlinkMode" class="unlinkSelect">
-            <option value="upstream">Clear tasks blocking this one</option>
-            <option value="downstream">Clear tasks waiting for this one</option>
-            <option value="all">Clear all dependencies</option>
+            <option value="upstream">Clear upstream (remove blockers)</option>
+            <option value="downstream">Clear downstream (release waiting)</option>
+            <option value="all">Clear all (break chain)</option>
+            <option value="preserve">Remove from chain (reconnect others)</option>
           </select>
         </div>
 
@@ -2316,10 +2317,10 @@ $("unlinkBtn").onclick = ()=>{
   const baseKey = linkBaseKey;
 
   const label = ({
-    downstream: "unlink downstream dependencies",
-    upstream: "unlink upstream dependencies",
-    all: "unlink all dependencies",
-    preserve: "remove but preserve chain"
+    upstream: "clear upstream dependencies (remove what's blocking this task)",
+    downstream: "clear downstream dependencies (release tasks waiting for this)",
+    all: "clear all dependencies (break the chain)",
+    preserve: "remove this task from the chain (reconnect upstream to downstream)"
   })[mode] || mode;
 
   if(!confirm(`This will ${label} for this task.\nThis cannot be undone. Continue?`)) return;
