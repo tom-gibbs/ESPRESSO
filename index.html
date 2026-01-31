@@ -518,6 +518,14 @@ html[data-theme="light"] .depLine{
 }
 .depIcon{display:inline-flex;width:16px;height:16px;margin-top:2px;opacity:.85;}
 .depIcon svg{width:16px;height:16px;display:block}
+.depLine.blocking{
+  border-color:rgba(122,176,215,.22);
+  background:rgba(122,176,215,.10);
+}
+html[data-theme="light"] .depLine.blocking{
+  border-color:rgba(58,106,154,.18);
+  background:rgba(122,176,215,.14);
+}
 
 .editInput{
   width:100%;padding:10px 12px;border-radius:999px;border:1px solid var(--line);
@@ -655,6 +663,23 @@ html[data-theme="light"] .unlinkBtnIcon:hover{ background: rgba(239,68,68,.08); 
 html[data-theme="light"] .moveSelect{ background: rgba(255,255,255,.92); color: var(--text); }
 
 .modalActions .right{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+
+.modalDivider{
+  margin:20px 0 16px;
+  border:0;
+  border-top:1px solid var(--line);
+}
+.modalSection{
+  padding:0;
+}
+.modalSectionTitle{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--muted);
+  margin-bottom:10px;
+}
 
 /* =========================================================
    FOCUS OVERLAY (includes Notes panel)
@@ -1004,15 +1029,7 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
     <div class="modalBox" role="dialog" aria-modal="true" aria-label="Dependencies">
       <div>
         <h3 class="modalTitle" id="linkTitle">Dependencies</h3>
-        <div class="modalSub" id="linkSub">Select tasks that should wait for this task.</div>
-      </div>
-
-      <div class="modalActions" style="margin-top:12px;">
-        <div class="moveRow">
-          <select id="moveProjectSelect" class="moveSelect"></select>
-          <button id="moveProjectBtn" class="primary" type="button">Move</button>
-        </div>
-        <div></div>
+        <div class="modalSub" id="linkSub">Select tasks that must finish first</div>
       </div>
 
       <div class="modalList" id="linkList"></div>
@@ -1023,16 +1040,25 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
             <span id="unlinkIconSlot" style="display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;"></span>
           </button>
           <select id="unlinkMode" class="unlinkSelect">
-            <option value="downstream">Unlink downstream dependencies</option>
-            <option value="upstream">Unlink upstream dependencies</option>
-            <option value="all">Unlink all dependencies</option>
-            <option value="preserve">Remove but preserve chain</option>
+            <option value="upstream">Clear tasks blocking this one</option>
+            <option value="downstream">Clear tasks waiting for this one</option>
+            <option value="all">Clear all dependencies</option>
           </select>
         </div>
 
         <div class="right">
           <button class="subtle" id="linkCancel" type="button">Cancel</button>
           <button class="primary" id="linkApply" type="button">Apply</button>
+        </div>
+      </div>
+
+      <div class="modalDivider"></div>
+
+      <div class="modalSection">
+        <div class="modalSectionTitle">Move to Project</div>
+        <div class="moveRow">
+          <select id="moveProjectSelect" class="moveSelect"></select>
+          <button id="moveProjectBtn" class="primary" type="button">Move</button>
         </div>
       </div>
     </div>
@@ -2046,7 +2072,7 @@ function openLinkModalForTask(task){
   linkBaseKey = taskKey(task);
 
   linkTitle.textContent = "Dependencies";
-  linkSub.textContent = `Select tasks that must wait for: ${task.text}`;
+  linkSub.textContent = `Select tasks that must finish before: ${task.text}`;
 
   renderMoveProjectSelect(task.projectId);
 
@@ -2067,10 +2093,14 @@ function openLinkModalForTask(task){
   }
 
   linkList.innerHTML = "";
+  const baseDeps = Array.isArray(linkBaseTask.dependsOn) ? linkBaseTask.dependsOn : [];
+
   candidates.forEach(it=>{
     const itKey = taskKey(it);
-    const checked = (it.dependsOn || []).includes(linkBaseKey);
-    const disabled = wouldCreateCycleKeys(linkBaseKey, itKey);
+    // Flipped: check if linkBaseTask depends on this candidate
+    const checked = baseDeps.includes(itKey);
+    // Flipped: would adding itKey as dependency of linkBaseTask create cycle?
+    const disabled = wouldCreateCycleKeys(itKey, linkBaseKey);
 
     const row = document.createElement("div");
     row.className = "modalRow" + (disabled ? " disabled" : "");
@@ -2089,7 +2119,7 @@ function openLinkModalForTask(task){
     const m = document.createElement("div");
     m.className = "m";
     if(disabled) m.textContent = "Not allowed (would create a cycle)";
-    else m.textContent = checked ? "Will be paused until this is done" : "Not dependent";
+    else m.textContent = checked ? "Must finish before this task can start" : "No dependency";
 
     body.appendChild(t);
     body.appendChild(m);
@@ -2206,29 +2236,24 @@ function wouldCreateCycleKeys(baseKey, candidateKey){
 
 /* apply link changes */
 $("linkApply").onclick = ()=>{
-  if(!linkBaseKey) return;
+  if(!linkBaseKey || !linkBaseTask) return;
 
   const rows = [...linkList.querySelectorAll(".modalRow")];
-  const idx = allKeysIndex();
 
+  // Collect all checked keys - these are tasks that linkBaseTask depends on
+  const newDeps = [];
   for(const r of rows){
     const key = r.dataset.key;
     const cb = r.querySelector("input[type=checkbox]");
     if(!cb || cb.disabled) continue;
+    if(cb.checked) newDeps.push(key);
+  }
 
-    const item = idx.get(key);
-    if(!item) continue;
+  // Update linkBaseTask's dependencies
+  linkBaseTask.dependsOn = newDeps;
 
-    const deps = Array.isArray(item.dependsOn) ? item.dependsOn.filter(Boolean).map(String) : [];
-    const has = deps.includes(linkBaseKey);
-
-    if(cb.checked && !has) deps.push(linkBaseKey);
-    if(!cb.checked && has) item.dependsOn = deps.filter(x=>x!==linkBaseKey);
-    else item.dependsOn = deps;
-
-    if(state.projectId !== ALL_ID){
-      item.dependsOn = item.dependsOn.filter(k => parseTaskKey(k).projectId === item.projectId);
-    }
+  if(state.projectId !== ALL_ID){
+    linkBaseTask.dependsOn = linkBaseTask.dependsOn.filter(k => parseTaskKey(k).projectId === linkBaseTask.projectId);
   }
 
   enforceDependenciesAllProjects();
@@ -2694,7 +2719,16 @@ function blockersLabel(task){
   const idx = allTasksIndexAllProjects();
   const names = blockers.map(k => idx.get(k)?.text || "(unknown)");
   const short = names.slice(0,2).join(", ") + (names.length>2 ? ` +${names.length-2}` : "");
-  return `Depends on: ${short}`;
+  return `Waiting for: ${short}`;
+}
+
+function blockingLabel(task){
+  const key = taskKey(task);
+  const children = childrenOfKey(key);
+  if(!children.length) return null;
+  const names = children.map(t => t.text || "(unknown)");
+  const short = names.slice(0,2).join(", ") + (names.length>2 ? ` +${names.length-2}` : "");
+  return `Blocking: ${short}`;
 }
 
 /* =========================================================
@@ -2835,14 +2869,24 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
   metaRow.appendChild(estChip);
   mainCol.appendChild(metaRow);
 
+  // Show "Waiting for" (upstream dependencies)
   if(task.dependsOn && task.dependsOn.length>0){
     const blockers = blockersForTaskKey(task);
     if(blockers.length){
       const line = document.createElement("div");
       line.className = "depLine";
-      line.innerHTML = `<span class="depIcon">${ICONS.link}</span><span>${escapeHtml(blockersLabel(task) || "Depends on")}</span>`;
+      line.innerHTML = `<span class="depIcon">${ICONS.link}</span><span>${escapeHtml(blockersLabel(task) || "Waiting for")}</span>`;
       mainCol.appendChild(line);
     }
+  }
+
+  // Show "Blocking" (downstream dependencies)
+  const blockingText = blockingLabel(task);
+  if(blockingText){
+    const line = document.createElement("div");
+    line.className = "depLine blocking";
+    line.innerHTML = `<span class="depIcon">${ICONS.link}</span><span>${escapeHtml(blockingText)}</span>`;
+    mainCol.appendChild(line);
   }
 
   if(state.view==="paused" && state.projectId !== ALL_ID){
