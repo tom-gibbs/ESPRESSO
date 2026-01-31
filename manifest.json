@@ -1,0 +1,19 @@
+{
+  "name": "ESPRESSO",
+  "short_name": "ESPRESSO",
+  "description": "The calm before the brainstorm - Task management app",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#07080b",
+  "theme_color": "#d7b07a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "espresso-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}

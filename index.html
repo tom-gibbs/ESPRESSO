@@ -6,6 +6,11 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://content.googleapis.com;">
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="espresso-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#d7b07a" />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
 
@@ -1075,6 +1080,213 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .googleBtn:hover{box-shadow:0 4px 12px rgba(0,0,0,.15)}
 .googleBtn svg{width:20px;height:20px}
 .syncActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+
+/* =========================================================
+   MOBILE RESPONSIVE
+   ========================================================= */
+@media (max-width: 640px) {
+  /* Reduce container margins */
+  .wrap{margin:12px auto 24px;padding:0 8px}
+
+  /* Topbar: stack vertically */
+  .topbar{
+    padding:14px 12px 12px;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .brand{min-width:unset;width:100%;justify-content:center}
+  .brand img{width:36px;height:36px;border-radius:12px}
+  .brand h2{font-size:13px}
+  .brand .subtitle{font-size:11px}
+  .spacer{display:none}
+
+  /* Status and timer row */
+  .status{justify-content:center;font-size:12px}
+  .timerBadge{justify-content:center;font-size:11px;padding:6px 10px}
+
+  /* Action buttons: center wrap */
+  .actionsTop{justify-content:center;gap:6px}
+  button.iconTopBtn{width:36px;height:36px}
+  button.iconTopBtn svg{width:16px;height:16px}
+  #resetBtn{padding:8px 10px;font-size:12px}
+
+  /* Main content area */
+  .main{padding:12px}
+  .card{border-radius:var(--r-lg)}
+  .content{border-radius:0 0 var(--r-lg) var(--r-lg)}
+
+  /* Section header */
+  .sectionHeaderWrap{margin:0 0 10px;min-height:40px}
+  .sectionHeaderBtn{padding:8px 12px;font-size:14px}
+  .depMapBtn{width:32px;height:32px;margin-left:6px}
+  .depMapBtn svg{width:16px;height:16px}
+
+  /* Project menu */
+  .projectMenu{
+    width:96vw;
+    min-width:unset;
+    max-height:70vh;
+    border-radius:14px;
+    padding:8px;
+  }
+  .projectMenuTop{padding:4px 4px 8px;gap:6px}
+  .projectMenuTop input{padding:8px 10px;font-size:12px}
+  .projectMenuList{padding:6px 4px 4px;gap:4px;max-height:240px}
+  .projectRow{padding:8px;gap:8px;border-radius:12px}
+  .projectNameBtn{font-size:13px}
+  #reorderProjectsBtn{padding:6px 10px;font-size:12px}
+
+  /* Add task row */
+  .addRow{gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  input[type="text"]{padding:10px 12px;font-size:13px}
+  .inlineProjectSelect{
+    padding:8px 20px 8px 10px;
+    font-size:12px;
+    min-width:100px;
+    max-width:140px;
+    background-position:right 6px center;
+  }
+
+  /* Tabs */
+  .summaryTabs{margin:4px 0 10px;padding:3px;gap:3px}
+  .summaryTab{padding:8px 10px;font-size:12px}
+
+  /* List items */
+  .list{gap:8px}
+  .item{padding:10px;gap:8px;border-radius:var(--r-md)}
+  .handle{width:26px;height:26px;font-size:14px;border-radius:8px}
+  .num{width:28px;font-size:11px;margin-top:4px}
+  .mainCol{min-width:180px}
+  .textDisplay{font-size:14px}
+  .metaRow{gap:6px;font-size:12px}
+  .metaChip{padding:4px 8px}
+  .badge{font-size:10px;padding:3px 6px}
+  .iconRow{gap:6px}
+  .iconBtn{width:30px;height:30px}
+  .iconBtn svg{width:14px;height:14px}
+
+  /* Dependency/blocker lines */
+  .blockerLine,.depLine{padding:8px 10px;font-size:12px;margin-top:8px}
+  .item.subtask{margin-left:20px}
+
+  /* Color picker */
+  .colorPicker{padding:4px;gap:4px;border-radius:10px}
+  .colorOption{width:18px;height:18px}
+  .colorDot{width:8px;height:8px;margin-top:4px}
+
+  /* List footer */
+  .listFooter{font-size:11px}
+
+  /* Empty state */
+  .emptyState{padding:32px 16px}
+  .emptyState .emptyIcon{font-size:36px}
+  .emptyState .emptyText{font-size:14px}
+  .emptyState .emptyHint{font-size:12px}
+
+  /* Modals: full width */
+  .modalInner{padding:12px}
+  .modalBox{
+    width:100%;
+    border-radius:18px;
+    padding:14px;
+  }
+  .modalTitle{font-size:16px}
+  .modalSub{font-size:12px}
+  .modalList{margin-top:12px;border-radius:14px}
+  .modalRow{padding:10px 12px;gap:8px}
+  .modalRow .t{font-size:13px}
+  .modalRow .m{font-size:11px}
+  .modalActions{gap:8px;margin-top:12px;flex-direction:column}
+  .unlinkRow{flex-direction:column;width:100%;gap:8px}
+  .unlinkSelect{width:100%;font-size:12px}
+  .moveRow{flex-direction:column;width:100%;gap:8px}
+  .moveSelect{width:100%;min-width:unset;font-size:12px}
+  .modalActions .right{width:100%;justify-content:space-between}
+
+  /* Focus overlay */
+  .focusInner{padding:12px}
+  .focusBox{
+    width:100%;
+    border-radius:20px;
+    padding:16px;
+  }
+  .focusMain{font-size:clamp(22px, 5vw, 32px)}
+  .focusMainInput{font-size:clamp(22px, 5vw, 32px);padding:6px 10px;border-radius:10px}
+  .focusSub{font-size:13px;margin-top:8px}
+  .focusTimerRow{margin-top:12px;gap:8px}
+  .focusTimerPill{padding:8px 10px;gap:8px}
+  .focusTimerPill svg{width:16px;height:16px}
+  .focusTimerText{font-size:13px}
+  .focusTimerHint{font-size:11px}
+  .focusTimerReset{width:30px;height:30px}
+  .focusTimerReset svg{width:16px;height:16px}
+  .focusNotes{margin-top:12px;padding:10px;border-radius:14px}
+  .focusNotesTitle{font-size:11px}
+  .focusNotesBox{margin-top:8px;padding:10px;font-size:13px;min-height:100px;border-radius:12px}
+  .focusBtns{gap:8px;margin-top:14px}
+  .focusBtns button{padding:8px 12px;font-size:12px}
+
+  /* Dependency map */
+  .depMapBox{
+    width:100%;
+    padding:14px;
+    border-radius:18px;
+    max-height:90vh;
+  }
+  .depMapHeader{margin-bottom:10px}
+  .depMapClose{width:28px;height:28px;font-size:14px}
+  .depMapLegend{gap:12px;margin-bottom:12px;font-size:11px;flex-wrap:wrap}
+  .legendDot{width:8px;height:8px}
+  .depMapContainer{padding:12px;border-radius:var(--r-sm);min-height:150px}
+  .depMapNode{padding:6px 10px;font-size:12px;max-width:140px}
+
+  /* Sync overlay */
+  .syncInner{padding:12px}
+  .syncBox{
+    width:100%;
+    border-radius:18px;
+    padding:18px;
+  }
+  .syncBox h3{font-size:18px}
+  .syncBox p{font-size:13px}
+  .syncUserInfo{padding:12px;gap:10px}
+  .syncAvatar{width:38px;height:38px}
+  .syncUserName{font-size:14px}
+  .syncUserEmail{font-size:11px}
+  .googleBtn{padding:10px 20px;font-size:13px}
+
+  /* Summary page */
+  .summaryPage{margin-top:10px}
+  .summaryCard{padding:12px;border-radius:var(--r-lg)}
+  .summaryCard h3{font-size:12px}
+  .summaryRow{font-size:12px;gap:8px}
+  .focusPreview{gap:8px}
+  .focusMark{width:8px;height:8px;margin-top:5px}
+  .focusTitle{font-size:14px}
+  .focusMeta{font-size:12px}
+
+  /* Done filters */
+  .listTopRow{gap:8px;flex-wrap:wrap}
+  .doneToggle{padding:3px;gap:3px}
+  .doneBtn{padding:8px 10px;font-size:12px}
+  #clearDoneBtn{padding:8px 10px;font-size:12px}
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+  .wrap{padding:0 6px}
+  .topbar{padding:12px 10px}
+  .main{padding:10px}
+  .brand h2{font-size:12px;letter-spacing:.18em}
+  .actionsTop{gap:4px}
+  button.iconTopBtn{width:32px;height:32px}
+  .summaryTab{padding:6px 8px;font-size:11px}
+  .item{padding:8px;gap:6px}
+  .handle{width:24px;height:24px;font-size:12px}
+  .textDisplay{font-size:13px}
+  .focusBox,.modalBox,.syncBox,.depMapBox{padding:12px}
+}
 </style>
 </head>
 
@@ -4977,6 +5189,15 @@ queueSave = function(){
 
 // Check for pending sync on load
 checkPendingSync();
+
+// Register Service Worker for PWA/offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
 </script>
 
 </body>
