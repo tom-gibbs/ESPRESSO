@@ -1110,19 +1110,18 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 /* =========================================================
    SWIPE GESTURES (mobile)
    ========================================================= */
-/* Swipe container for tasks */
-.swipeContainer{
+/* Swipe wrapper and actions - hidden by default */
+.swipeWrap{
   position:relative;
   overflow:hidden;
   border-radius:var(--r-lg);
 }
-.swipeContainer .item{
+.swipeWrap .item{
   position:relative;
   z-index:2;
   transition:transform 0.2s ease;
-  border-radius:var(--r-lg);
 }
-.swipeContainer.swiping .item{
+.swipeWrap.swiping .item{
   transition:none;
 }
 .swipeActions{
@@ -1131,9 +1130,6 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
   display:none;
   align-items:stretch;
   z-index:1;
-}
-@media (max-width: 640px){
-  .swipeActions{display:flex}
 }
 .swipeAction{
   display:flex;align-items:center;justify-content:center;
@@ -1149,7 +1145,12 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .swipeAction svg{width:20px;height:20px}
 .swipeAction.done{background:#22c55e}
 .swipeAction.delete{background:#ef4444}
-.swipeAction.pause{background:#eab308}
+
+/* Show actions only when swiping or swiped */
+.swipeWrap.swiping .swipeActions,
+.swipeWrap.swiped .swipeActions{
+  display:flex;
+}
 
 /* Pull to refresh */
 .pullRefresh{
@@ -5429,20 +5430,22 @@ qsa(".bottomNavBtn").forEach(btn => {
    ========================================================= */
 (function(){
   if(!('ontouchstart' in window)) return;
+  if(window.innerWidth > 640) return;
 
   const SWIPE_THRESHOLD = 60;
   const MAX_SWIPE = 140;
-  let activeSwipeItem = null;
+  let activeWrap = null;
   let startX = 0;
   let startY = 0;
   let currentX = 0;
   let isSwiping = false;
 
   function closeActiveSwipe(){
-    if(activeSwipeItem){
-      activeSwipeItem.style.transform = '';
-      activeSwipeItem.classList.remove('swiped');
-      activeSwipeItem = null;
+    if(activeWrap){
+      const item = activeWrap.querySelector('.item');
+      if(item) item.style.transform = '';
+      activeWrap.classList.remove('swiped', 'swiping');
+      activeWrap = null;
     }
   }
 
@@ -5458,11 +5461,11 @@ qsa(".bottomNavBtn").forEach(btn => {
   }
 
   document.addEventListener('touchstart', (e) => {
-    const item = e.target.closest('.item');
-    if(!item) return;
+    const wrap = e.target.closest('.swipeWrap');
+    if(!wrap) return;
 
     // Close any other open swipe
-    if(activeSwipeItem && activeSwipeItem !== item){
+    if(activeWrap && activeWrap !== wrap){
       closeActiveSwipe();
     }
 
@@ -5470,77 +5473,81 @@ qsa(".bottomNavBtn").forEach(btn => {
     startY = e.touches[0].clientY;
     currentX = 0;
     isSwiping = false;
-
-    item._swipeStartX = startX;
+    wrap._swipeStartX = startX;
   }, {passive: true});
 
   document.addEventListener('touchmove', (e) => {
-    const item = e.target.closest('.item');
-    if(!item || item._swipeStartX === undefined) return;
+    const wrap = e.target.closest('.swipeWrap');
+    if(!wrap || wrap._swipeStartX === undefined) return;
 
-    const deltaX = e.touches[0].clientX - item._swipeStartX;
+    const item = wrap.querySelector('.item');
+    if(!item) return;
+
+    const deltaX = e.touches[0].clientX - wrap._swipeStartX;
     const deltaY = e.touches[0].clientY - startY;
 
-    // If scrolling vertically, don't swipe
+    // If scrolling vertically, cancel swipe
     if(!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)){
-      item._swipeStartX = undefined;
+      wrap._swipeStartX = undefined;
       return;
     }
 
-    // Only allow left swipe (negative delta)
+    // Swiping right - close if open
     if(deltaX > 10){
-      // Swiping right - close if open
-      if(activeSwipeItem === item){
+      if(activeWrap === wrap){
         item.style.transform = '';
-        item.classList.remove('swiped');
-        activeSwipeItem = null;
+        wrap.classList.remove('swiped', 'swiping');
+        activeWrap = null;
       }
       return;
     }
 
+    // Swiping left
     if(deltaX < -10){
       isSwiping = true;
+      wrap.classList.add('swiping');
       currentX = Math.max(deltaX, -MAX_SWIPE);
       item.style.transform = `translateX(${currentX}px)`;
     }
   }, {passive: true});
 
   document.addEventListener('touchend', (e) => {
-    const item = e.target.closest('.item');
-    if(!item || item._swipeStartX === undefined) return;
+    const wrap = e.target.closest('.swipeWrap');
+    if(!wrap || wrap._swipeStartX === undefined) return;
 
-    item._swipeStartX = undefined;
+    const item = wrap.querySelector('.item');
+    wrap._swipeStartX = undefined;
+    wrap.classList.remove('swiping');
 
-    if(isSwiping){
+    if(isSwiping && item){
       if(currentX < -SWIPE_THRESHOLD){
-        // Keep open
         item.style.transform = `translateX(-${MAX_SWIPE}px)`;
-        item.classList.add('swiped');
-        activeSwipeItem = item;
+        wrap.classList.add('swiped');
+        activeWrap = wrap;
       } else {
-        // Snap back
         item.style.transform = '';
-        item.classList.remove('swiped');
-        if(activeSwipeItem === item) activeSwipeItem = null;
+        wrap.classList.remove('swiped');
+        if(activeWrap === wrap) activeWrap = null;
       }
     }
     isSwiping = false;
   }, {passive: true});
 
-  // Handle swipe action clicks
+  // Handle clicks
   document.addEventListener('click', (e) => {
-    const item = e.target.closest('.item');
+    const wrap = e.target.closest('.swipeWrap');
 
-    // If clicking outside swiped item, close it
-    if(activeSwipeItem && (!item || item !== activeSwipeItem)){
+    // Close if clicking outside
+    if(activeWrap && (!wrap || wrap !== activeWrap)){
       closeActiveSwipe();
     }
 
-    // Check for swipe action buttons (we'll add these to items)
+    // Done button
     if(e.target.closest('.swipeActionDone')){
-      const swipedItem = e.target.closest('.item');
-      if(swipedItem){
-        const task = getTaskFromItem(swipedItem);
+      const w = e.target.closest('.swipeWrap');
+      const item = w?.querySelector('.item');
+      if(item){
+        const task = getTaskFromItem(item);
         if(task){
           closeActiveSwipe();
           markDone(task);
@@ -5550,10 +5557,12 @@ qsa(".bottomNavBtn").forEach(btn => {
       e.stopPropagation();
     }
 
+    // Delete button
     if(e.target.closest('.swipeActionDelete')){
-      const swipedItem = e.target.closest('.item');
-      if(swipedItem){
-        const task = getTaskFromItem(swipedItem);
+      const w = e.target.closest('.swipeWrap');
+      const item = w?.querySelector('.item');
+      if(item){
+        const task = getTaskFromItem(item);
         if(task && confirm("Delete this task?")){
           closeActiveSwipe();
           deleteTask(task);
@@ -5565,31 +5574,37 @@ qsa(".bottomNavBtn").forEach(btn => {
     }
   });
 
-  // Add swipe actions to items after render
+  // Wrap items after render
   const origRenderList = renderList;
   renderList = function(){
     origRenderList();
-    // Add swipe action buttons to items on mobile
-    if(window.innerWidth <= 640){
-      qsa('.item').forEach(item => {
-        if(item.querySelector('.swipeActions')) return;
-        const actions = document.createElement('div');
-        actions.className = 'swipeActions';
-        actions.innerHTML = `
-          <button class="swipeAction done swipeActionDone" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Done
-          </button>
-          <button class="swipeAction delete swipeActionDelete" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Delete
-          </button>
-        `;
-        item.parentElement.style.position = 'relative';
-        item.parentElement.style.overflow = 'hidden';
-        item.parentElement.insertBefore(actions, item);
-      });
-    }
+    if(window.innerWidth > 640) return;
+
+    qsa('.list > li').forEach(li => {
+      if(li.querySelector('.swipeWrap')) return;
+      const item = li.querySelector('.item');
+      if(!item) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'swipeWrap';
+
+      const actions = document.createElement('div');
+      actions.className = 'swipeActions';
+      actions.innerHTML = `
+        <button class="swipeAction done swipeActionDone" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Done
+        </button>
+        <button class="swipeAction delete swipeActionDelete" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Delete
+        </button>
+      `;
+
+      li.insertBefore(wrap, item);
+      wrap.appendChild(actions);
+      wrap.appendChild(item);
+    });
   };
 
   // Pull to refresh
@@ -5616,7 +5631,6 @@ qsa(".bottomNavBtn").forEach(btn => {
   document.addEventListener('touchend', () => {
     if(document.body.classList.contains('pull-ready')){
       document.body.classList.remove('pull-ready');
-      // Trigger sync
       if($("syncBtn")) $("syncBtn").click();
     }
     isPulling = false;
@@ -5626,6 +5640,7 @@ qsa(".bottomNavBtn").forEach(btn => {
 /* Tab swipe navigation */
 (function(){
   if(!('ontouchstart' in window)) return;
+  if(window.innerWidth > 640) return;
 
   const tabOrder = ['active', 'paused', 'done'];
   let tabSwipeStartX = 0;
@@ -5634,22 +5649,20 @@ qsa(".bottomNavBtn").forEach(btn => {
   if(!listEl) return;
 
   listEl.addEventListener('touchstart', (e) => {
-    if(e.target.closest('.item')) return; // Don't interfere with item swipes
+    if(e.target.closest('.item')) return;
     tabSwipeStartX = e.touches[0].clientX;
   }, {passive: true});
 
   listEl.addEventListener('touchend', (e) => {
     if(e.target.closest('.item')) return;
     const deltaX = e.changedTouches[0].clientX - tabSwipeStartX;
-    if(Math.abs(deltaX) < 80) return; // Not enough swipe
+    if(Math.abs(deltaX) < 80) return;
 
     const currentIdx = tabOrder.indexOf(state.view);
     if(deltaX > 0 && currentIdx > 0){
-      // Swipe right - go to previous tab
       state.view = tabOrder[currentIdx - 1];
       renderAll();
     } else if(deltaX < 0 && currentIdx < tabOrder.length - 1){
-      // Swipe left - go to next tab
       state.view = tabOrder[currentIdx + 1];
       renderAll();
     }
