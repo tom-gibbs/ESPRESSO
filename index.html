@@ -4729,12 +4729,17 @@ $("newText").addEventListener("keydown",(e)=>{
 });
 
 /* Voice Input using Web Speech API */
-const voiceBtn = $("voiceInputBtn");
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+(function(){
+  const voiceBtn = $("voiceInputBtn");
+  if(!voiceBtn) return;
 
-if(!SpeechRecognition){
-  voiceBtn.classList.add("unsupported");
-} else {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition){
+    voiceBtn.classList.add("unsupported");
+    return;
+  }
+
   const recognition = new SpeechRecognition();
   recognition.continuous = false;
   recognition.interimResults = false;
@@ -4775,7 +4780,7 @@ if(!SpeechRecognition){
     voiceBtn.classList.remove("listening");
     $("newText").placeholder = "Add a task…";
   };
-}
+})();
 
 $("clearDoneBtn").onclick = ()=>{
   let totalCount = 0;
