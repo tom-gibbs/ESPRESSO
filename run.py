@@ -305,11 +305,19 @@ class Handler(SimpleHTTPRequestHandler):
         _, qs = self._parse_qs()
         return qs.get("allow_empty", ["0"])[0] in ("1", "true", "yes", "on")
 
+    # Security: only serve specific files, not the entire directory
+    ALLOWED_FILES = {"/", "/index.html", "/espresso-icon.png"}
+
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == "/api/state":
             payload = with_client_compat(load_state())
             return self._send_json(200, payload, no_store=True)
+        # Restrict static file serving to allowed files only
+        path = u.path if u.path != "/" else "/index.html"
+        if path not in self.ALLOWED_FILES:
+            self.send_error(404, "Not Found")
+            return
         return super().do_GET()
 
     def do_POST(self):

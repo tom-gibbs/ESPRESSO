@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com;">
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2418,7 +2419,9 @@ function resumeTask(task){
   renderAll();
 }
 function markDone(task){
-  stopTimer();
+  // Only stop timer if it's tracking this specific task
+  const doneKey = taskKey(task);
+  if(timerTaskKey === doneKey) stopTimer();
 
   if(state.projectId === ALL_ID){
     alert("Mark done inside a specific project (not ALL PROJECTS).");
@@ -3016,6 +3019,16 @@ function closeFocus(){
 }
 focusOverlay.addEventListener("click",(e)=>{ if(e.target===focusOverlay) closeFocus(); });
 
+// Global Escape key to close modals
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape"){
+    if(focusOverlay.classList.contains("on")){ closeFocus(); return; }
+    if(linkOverlay.classList.contains("on")){ closeLinkModal(); return; }
+    if(syncOverlay.classList.contains("on")){ closeSyncModal(); return; }
+    if(projectMenu.classList.contains("on")){ closeProjectMenu(); return; }
+  }
+});
+
 /* =========================================================
    TIMER (persistent)
    ========================================================= */
@@ -3292,6 +3305,11 @@ $("resetBtn").onclick = ()=>{
 };
 
 $("forceSaveBtn").onclick = async ()=>{
+  const btn = $("forceSaveBtn");
+  if(btn.disabled) return;
+  btn.disabled = true;
+  btn.style.opacity = "0.5";
+
   try{
     setStatus("Saving…");
 
@@ -3328,6 +3346,9 @@ $("forceSaveBtn").onclick = async ()=>{
   }catch(e){
     console.error(e);
     setStatus("SAVE FAILED");
+  }finally{
+    btn.disabled = false;
+    btn.style.opacity = "";
   }
 };
 
@@ -3557,15 +3578,21 @@ $("signOutBtn").onclick = () => {
 };
 
 $("syncNowBtn").onclick = async () => {
+  const btn = $("syncNowBtn");
+  if(btn.disabled) return;
+  btn.disabled = true;
+
   setSyncStatus("Syncing...", "");
   $("syncBtn").classList.add("syncing");
   try {
     await pushToDrive();
+    clearPendingSync();
     setSyncStatus("Synced successfully!", "success");
   } catch(e){
     setSyncStatus("Sync failed: " + e.message, "error");
   }
   $("syncBtn").classList.remove("syncing");
+  btn.disabled = false;
 };
 
 // Google Drive functions
