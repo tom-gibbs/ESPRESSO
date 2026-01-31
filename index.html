@@ -756,6 +756,9 @@ html[data-theme="light"] .depMapBox{
   border:1px solid var(--line);
   border-radius:var(--r-md);
   background:rgba(0,0,0,.1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
 .depMapSvg{
@@ -2402,27 +2405,105 @@ function renderDepMap(){
     return;
   }
 
-  // Filter to only show tasks with dependencies (upstream or downstream)
-  const tasksWithDeps = new Set();
+  // Build adjacency for dependency graph
+  const adjUp = new Map();   // key -> [parent keys]
+  const adjDown = new Map(); // key -> [child keys]
   for(const t of tasks){
     const key = taskKey(t);
-    // Check if task has upstream dependencies
-    if(t.dependsOn && t.dependsOn.length > 0){
-      for(const depKey of t.dependsOn){
-        if(taskMap.has(depKey)){
-          tasksWithDeps.add(key);
-          tasksWithDeps.add(depKey);
-        }
+    if(!adjUp.has(key)) adjUp.set(key, []);
+    if(!adjDown.has(key)) adjDown.set(key, []);
+    for(const depKey of (t.dependsOn || [])){
+      if(taskMap.has(depKey)){
+        adjUp.get(key).push(depKey);
+        if(!adjDown.has(depKey)) adjDown.set(depKey, []);
+        adjDown.get(depKey).push(key);
       }
     }
   }
 
-  // Replace tasks array with only those that have dependencies
+  // Find connected components and filter out all-done components
+  const visited = new Set();
+  const components = [];
+
+  function bfs(startKey){
+    const component = new Set();
+    const queue = [startKey];
+    while(queue.length > 0){
+      const k = queue.shift();
+      if(component.has(k)) continue;
+      component.add(k);
+      for(const p of (adjUp.get(k) || [])) if(!component.has(p)) queue.push(p);
+      for(const c of (adjDown.get(k) || [])) if(!component.has(c)) queue.push(c);
+    }
+    return component;
+  }
+
+  // Helper to check if a task is done
+  function isTaskDone(t){
+    const proj = getProject(t.projectId);
+    if(!proj) return false;
+    return proj.done_today.some(x => x.id === t.id) || proj.done_week.some(x => x.id === t.id);
+  }
+
+  for(const t of tasks){
+    const key = taskKey(t);
+    if(visited.has(key)) continue;
+    // Only process tasks that have dependencies
+    if((adjUp.get(key)?.length || 0) === 0 && (adjDown.get(key)?.length || 0) === 0) continue;
+
+    const comp = bfs(key);
+    for(const k of comp) visited.add(k);
+
+    // Check if all tasks in component are done
+    let allDone = true;
+    for(const k of comp){
+      const task = taskMap.get(k);
+      if(task && !isTaskDone(task)){ allDone = false; break; }
+    }
+
+    if(!allDone) components.push(comp);
+  }
+
+  // Collect tasks from non-done components
+  const tasksWithDeps = new Set();
+  for(const comp of components){
+    for(const k of comp) tasksWithDeps.add(k);
+  }
+
   const filteredTasks = tasks.filter(t => tasksWithDeps.has(taskKey(t)));
 
   if(filteredTasks.length === 0){
     depMapNodes.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No dependencies to visualise</div>';
     return;
+  }
+
+  // Build transitive reduction: remove edges that are implied by longer paths
+  // If A→B→C exists, remove direct edge A→C
+  const transitiveEdges = new Set(); // edges to skip: "fromKey|toKey"
+
+  function hasPath(from, to, skipDirect){
+    // BFS to check if there's a path from 'from' to 'to' without using direct edge
+    const seen = new Set();
+    const queue = [...(adjDown.get(from) || []).filter(k => !skipDirect || k !== to)];
+    while(queue.length > 0){
+      const k = queue.shift();
+      if(k === to) return true;
+      if(seen.has(k)) continue;
+      seen.add(k);
+      for(const next of (adjDown.get(k) || [])) if(!seen.has(next)) queue.push(next);
+    }
+    return false;
+  }
+
+  for(const t of filteredTasks){
+    const key = taskKey(t);
+    for(const depKey of (t.dependsOn || [])){
+      if(!taskMap.has(depKey)) continue;
+      // Check if there's another path from depKey to key (via intermediates)
+      if(hasPath(depKey, key, true)){
+        transitiveEdges.add(depKey + "|" + key);
+      }
+    }
   }
 
   // Use filtered tasks from here on
@@ -2579,13 +2660,17 @@ function renderDepMap(){
   depMapSvg.appendChild(defs);
 
   for(const t of tasksToRender){
-    const toPos = nodePositions.get(taskKey(t));
+    const toKey = taskKey(t);
+    const toPos = nodePositions.get(toKey);
     if(!toPos) continue;
 
     const deps = t.dependsOn || [];
     for(const depKey of deps){
       const fromPos = nodePositions.get(depKey);
       if(!fromPos) continue;
+
+      // Skip transitive edges (implied by longer paths)
+      if(transitiveEdges.has(depKey + "|" + toKey)) continue;
 
       const x1 = fromPos.x + nodeWidth / 2;
       const y1 = fromPos.y + nodeHeight;
