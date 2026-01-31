@@ -2788,19 +2788,46 @@ function getAfterElement(ul,y){
   },{offset:-Infinity,el:null}).el;
 }
 function syncOrderFromDOMList(){
-  if(state.projectId === ALL_ID) return;
-
   const ul = $("list");
-  const ids = [...ul.querySelectorAll(".item")].map(li=>li.dataset.id);
+  const items = [...ul.querySelectorAll(".item")];
 
-  const proj = currentProject();
   const listKey = (state.view==="active") ? "active"
                : (state.view==="paused")  ? "paused"
                : null;
   if(!listKey) return;
 
-  const arr = proj[listKey];
-  proj[listKey] = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean);
+  if(state.projectId === ALL_ID){
+    // For All Projects view, sync each project's order based on DOM position
+    const tasksByProject = new Map();
+    items.forEach((li, globalIdx) => {
+      const id = li.dataset.id;
+      // Find which project this task belongs to
+      for(const pid of state.data.projectOrder){
+        const proj = getProject(pid);
+        if(!proj) continue;
+        const task = proj[listKey].find(t => t.id === id);
+        if(task){
+          if(!tasksByProject.has(pid)) tasksByProject.set(pid, []);
+          tasksByProject.get(pid).push({task, globalIdx});
+          break;
+        }
+      }
+    });
+    // Update each project's list order
+    for(const [pid, tasksWithIdx] of tasksByProject){
+      const proj = getProject(pid);
+      if(!proj) continue;
+      // Sort by global DOM index to preserve relative order
+      tasksWithIdx.sort((a,b) => a.globalIdx - b.globalIdx);
+      proj[listKey] = tasksWithIdx.map(t => t.task);
+    }
+  } else {
+    const ids = items.map(li=>li.dataset.id);
+    const proj = currentProject();
+    const arr = proj[listKey];
+    proj[listKey] = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean);
+  }
+
   queueSave();
   renderAll();
 }
@@ -2923,15 +2950,11 @@ function addItem(text){
   const t = (text||"").trim();
   if(!t) return;
 
-  // On summary page, use inline selector; otherwise use current project
+  // On summary page or all projects view, use inline selector; otherwise use current project
   let targetPid;
-  if(state.page === "summary"){
+  if(state.page === "summary" || state.projectId === ALL_ID){
     targetPid = $("inlineProjectSelect").value;
   } else {
-    if(state.projectId === ALL_ID){
-      alert("Add tasks inside a specific project (not ALL PROJECTS).");
-      return;
-    }
     targetPid = state.projectId;
   }
 
@@ -2965,10 +2988,6 @@ function addItem(text){
   });
 }
 function pauseWithReason(task){
-  if(state.projectId === ALL_ID){
-    alert("Pause/resume inside a specific project (not ALL PROJECTS).");
-    return;
-  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -2988,10 +3007,6 @@ function pauseWithReason(task){
   renderAll();
 }
 function resumeTask(task){
-  if(state.projectId === ALL_ID){
-    alert("Pause/resume inside a specific project (not ALL PROJECTS).");
-    return;
-  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -3015,11 +3030,6 @@ function markDone(task){
   const doneKey = taskKey(task);
   if(timerTaskKey === doneKey) stopTimer();
 
-  if(state.projectId === ALL_ID){
-    alert("Mark done inside a specific project (not ALL PROJECTS).");
-    return;
-  }
-
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -3040,11 +3050,6 @@ function markDone(task){
   renderAll();
 }
 function restoreFromDone(task){
-  if(state.projectId === ALL_ID){
-    alert("Restore inside a specific project (not ALL PROJECTS).");
-    return;
-  }
-
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -3062,12 +3067,18 @@ function restoreFromDone(task){
 }
 function clearDoneCurrent(){
   if(state.projectId === ALL_ID){
-    alert("Clear done inside a specific project (not ALL PROJECTS).");
-    return;
+    // Clear from all projects
+    for(const pid of state.data.projectOrder){
+      const proj = getProject(pid);
+      if(!proj) continue;
+      if(state.doneFilter === "today") proj.done_today = [];
+      else proj.done_week = [];
+    }
+  } else {
+    const proj = currentProject();
+    if(state.doneFilter === "today") proj.done_today = [];
+    else proj.done_week = [];
   }
-  const proj = currentProject();
-  if(state.doneFilter === "today") proj.done_today = [];
-  else proj.done_week = [];
   queueSave();
   renderAll();
 }
@@ -3116,7 +3127,7 @@ let activeColorPicker = null; // Track open color picker
 
 function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, isSubtask=false}={}){
   li.className = "item" + (nested ? " nested" : "") + (isSubtask ? " subtask" : "");
-  const isPriority = (state.view==="active" && i<3 && state.projectId !== ALL_ID && !isSubtask);
+  const isPriority = (state.view==="active" && i<3 && !isSubtask);
   if(isPriority) li.classList.add("priority");
   li.dataset.id = task.id;
 
@@ -3318,7 +3329,7 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
   li.appendChild(mainCol);
   li.appendChild(iconRow);
 
-  const canDrag = (editing.id===null && state.projectId !== ALL_ID && (state.view==="active" || state.view==="paused"));
+  const canDrag = (editing.id===null && (state.view==="active" || state.view==="paused"));
   li.draggable = canDrag;
   if(canDrag){
     li.addEventListener("dragstart",()=>li.classList.add("dragging"));
@@ -3387,7 +3398,7 @@ function renderList(){
     }
     items.forEach((task,i)=>{
       const li = document.createElement("li");
-      renderItem(li, task, i, {showHandle:false, showNum:true});
+      renderItem(li, task, i, {showHandle:true, showNum:true});
       ul.appendChild(li);
     });
     renderListFooter();
@@ -4047,14 +4058,17 @@ function renderAll(){
     return;
   }
 
-  // List page: show section header, hide inline project selector
+  // List page: show section header, show inline project selector for all projects view
   $("sectionHeaderWrap").style.display = "";
-  $("inlineProjectSelect").style.display = "none";
+  $("inlineProjectSelect").style.display = (state.projectId === ALL_ID) ? "" : "none";
   $("summaryPage").style.display = "none";
   $("list").style.display = "";
   $("summaryTabs").style.display = "";
-  $("newText").disabled = (state.projectId === ALL_ID);
-  $("newText").placeholder = (state.projectId === ALL_ID) ? "Select a project to add tasks…" : "Add a task…";
+  $("newText").disabled = false;
+  $("newText").placeholder = "Add a task…";
+  if(state.projectId === ALL_ID){
+    renderInlineProjectSelect();
+  }
 
   renderList();
   renderFocus();
@@ -4076,12 +4090,21 @@ $("newText").addEventListener("keydown",(e)=>{
 });
 
 $("clearDoneBtn").onclick = ()=>{
-  if(state.projectId === ALL_ID) return;
-  const proj = currentProject();
-  const arr = (state.doneFilter==="today") ? proj.done_today : proj.done_week;
-  if(arr.length===0) return;
+  let totalCount = 0;
+  if(state.projectId === ALL_ID){
+    for(const pid of state.data.projectOrder){
+      const proj = getProject(pid);
+      if(!proj) continue;
+      totalCount += (state.doneFilter==="today") ? proj.done_today.length : proj.done_week.length;
+    }
+  } else {
+    const proj = currentProject();
+    totalCount = (state.doneFilter==="today") ? proj.done_today.length : proj.done_week.length;
+  }
+  if(totalCount===0) return;
   const period = state.doneFilter==="today" ? "today" : "this week";
-  if(confirm(`Clear ${arr.length} completed task${arr.length===1?"":"s"} from ${period}?\n\nThis cannot be undone.`)){
+  const scope = state.projectId === ALL_ID ? " from all projects" : "";
+  if(confirm(`Clear ${totalCount} completed task${totalCount===1?"":"s"} from ${period}${scope}?\n\nThis cannot be undone.`)){
     clearDoneCurrent();
   }
 };
