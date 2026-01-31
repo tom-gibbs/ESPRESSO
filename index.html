@@ -217,6 +217,17 @@ button.iconTopBtn svg{width:18px;height:18px;display:block}
 }
 html[data-theme="light"] .sectionHeaderBtn{ background: rgba(255,255,255,.92); }
 .sectionHeaderBtn:active{transform:translateY(1px)}
+.depMapBtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;margin-left:8px;
+  border-radius:999px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--muted);
+  cursor:pointer;transition:all 0.15s ease;
+}
+.depMapBtn svg{width:18px;height:18px}
+.depMapBtn:hover{background:rgba(255,255,255,.08);color:var(--text)}
+html[data-theme="light"] .depMapBtn{background:rgba(255,255,255,.92)}
+html[data-theme="light"] .depMapBtn:hover{background:rgba(0,0,0,.05)}
 
 .projectMenu{
   position:fixed;
@@ -406,6 +417,23 @@ html[data-theme="light"] .doneBtn.active{ background: rgba(255,255,255,.92); }
 }
 .collapseIcon.collapsed{transform:rotate(-90deg)}
 .item.collapsed-children + .item.subtask{display:none}
+
+/* Dependency highlighting */
+.item.dep-selected{
+  box-shadow:0 0 0 2px var(--accent), 0 0 20px rgba(215,176,122,.3);
+  border-color:var(--accent);
+}
+.item.dep-upstream{
+  border-left:3px solid #d4a856;
+  background:rgba(212,168,86,.08);
+}
+.item.dep-downstream{
+  border-left:3px solid #5b9bd5;
+  background:rgba(91,155,213,.08);
+}
+.item.dep-faded{
+  opacity:0.4;
+}
 
 /* Color dots for task tagging */
 .colorDot{
@@ -682,6 +710,81 @@ html[data-theme="light"] .moveSelect{ background: rgba(255,255,255,.92); color: 
   color:var(--muted);
   margin-bottom:10px;
 }
+
+/* Dependency Map */
+.depMapBox{
+  background:var(--paper);
+  border-radius:var(--r-xl);
+  padding:20px;
+  width:min(800px, 94vw);
+  max-height:85vh;
+  display:flex;
+  flex-direction:column;
+}
+html[data-theme="light"] .depMapBox{
+  background:#fff;
+  box-shadow:0 30px 120px rgba(15,23,42,.18);
+}
+.depMapHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+.depMapClose{
+  width:32px;height:32px;border-radius:999px;
+  border:1px solid var(--line);background:transparent;
+  color:var(--muted);cursor:pointer;font-size:16px;
+}
+.depMapClose:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.depMapLegend{
+  display:flex;gap:16px;margin-bottom:16px;
+  font-size:12px;color:var(--muted);
+}
+.legendItem{display:flex;align-items:center;gap:6px}
+.legendDot{width:10px;height:10px;border-radius:999px}
+.legendDot.active{background:#4ade80}
+.legendDot.paused{background:#facc15}
+.legendDot.done{background:var(--muted);opacity:0.5}
+.depMapContainer{
+  position:relative;
+  flex:1;
+  min-height:300px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:rgba(0,0,0,.1);
+}
+html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
+.depMapSvg{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  pointer-events:none;
+}
+.depMapSvg line{stroke:var(--muted);stroke-width:2;opacity:0.5}
+.depMapSvg line.highlight{stroke:var(--accent);stroke-width:2.5;opacity:1}
+.depMapNodes{position:relative;padding:20px}
+.depMapNode{
+  position:absolute;
+  padding:8px 14px;
+  border-radius:var(--r-sm);
+  border:1px solid var(--line);
+  background:var(--paper);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  max-width:180px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  transition:all 0.15s ease;
+}
+.depMapNode:hover{border-color:var(--accent);transform:scale(1.02)}
+.depMapNode.active{border-left:3px solid #4ade80}
+.depMapNode.paused{border-left:3px solid #facc15}
+.depMapNode.done{border-left:3px solid var(--muted);opacity:0.5}
+.depMapNode.selected{box-shadow:0 0 0 2px var(--accent);border-color:var(--accent)}
 
 /* =========================================================
    FOCUS OVERLAY (includes Notes panel)
@@ -986,6 +1089,9 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 
         <div id="sectionHeaderWrap" class="sectionHeaderWrap">
           <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button" title="Switch project">WORK</button>
+          <button id="depMapBtn" class="depMapBtn" type="button" title="Dependency map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/><path d="M12 12v3"/></svg>
+          </button>
         </div>
 
         <div id="projectMenu" class="projectMenu" aria-hidden="true">
@@ -1063,6 +1169,26 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
           <select id="moveProjectSelect" class="moveSelect"></select>
           <button id="moveProjectBtn" class="primary" type="button">Move</button>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="depMapOverlay" aria-hidden="true">
+  <div class="modalInner">
+    <div class="depMapBox" role="dialog" aria-modal="true" aria-label="Dependency Map">
+      <div class="depMapHeader">
+        <h3 class="modalTitle">Dependency Map</h3>
+        <button id="depMapClose" class="depMapClose" type="button">✕</button>
+      </div>
+      <div class="depMapLegend">
+        <span class="legendItem"><span class="legendDot active"></span>Active</span>
+        <span class="legendItem"><span class="legendDot paused"></span>Paused</span>
+        <span class="legendItem"><span class="legendDot done"></span>Done</span>
+      </div>
+      <div id="depMapContainer" class="depMapContainer">
+        <svg id="depMapSvg" class="depMapSvg"></svg>
+        <div id="depMapNodes" class="depMapNodes"></div>
       </div>
     </div>
   </div>
@@ -2136,15 +2262,259 @@ function openLinkModalForTask(task){
 
   linkOverlay.classList.add("on");
   document.body.style.overflow = "hidden";
+  highlightDependencies(task);
 }
 function closeLinkModal(){
   linkOverlay.classList.remove("on");
   document.body.style.overflow = "";
   linkBaseKey = null;
   linkBaseTask = null;
+  clearDependencyHighlights();
+}
+
+function highlightDependencies(task){
+  clearDependencyHighlights();
+  const key = taskKey(task);
+  const upstream = new Set(task.dependsOn || []);
+  const downstream = new Set();
+
+  // Find downstream (tasks that depend on this task)
+  const idx = allTasksIndexAllProjects();
+  for(const [k, t] of idx){
+    if(Array.isArray(t.dependsOn) && t.dependsOn.includes(key)){
+      downstream.add(k);
+    }
+  }
+
+  // Apply classes to list items
+  document.querySelectorAll(".item[data-id]").forEach(li => {
+    const itemId = li.dataset.id;
+    const itemPid = li.closest("[data-project-id]")?.dataset.projectId || state.projectId;
+    const itemKey = `${itemPid}:${itemId}`;
+
+    // Try to match by task key or just id
+    if(itemId === task.id || itemKey === key){
+      li.classList.add("dep-selected");
+    } else if(upstream.has(itemKey) || upstream.has(itemId)){
+      li.classList.add("dep-upstream");
+    } else if(downstream.has(itemKey) || downstream.has(itemId)){
+      li.classList.add("dep-downstream");
+    } else {
+      li.classList.add("dep-faded");
+    }
+  });
+}
+
+function clearDependencyHighlights(){
+  document.querySelectorAll(".item").forEach(li => {
+    li.classList.remove("dep-selected", "dep-upstream", "dep-downstream", "dep-faded");
+  });
 }
 linkOverlay.addEventListener("click",(e)=>{ if(e.target===linkOverlay) closeLinkModal(); });
 $("linkCancel").onclick = closeLinkModal;
+
+/* =========================================================
+   DEPENDENCY MAP
+   ========================================================= */
+const depMapOverlay = $("depMapOverlay");
+const depMapContainer = $("depMapContainer");
+const depMapNodes = $("depMapNodes");
+const depMapSvg = $("depMapSvg");
+
+function openDepMap(){
+  depMapOverlay.classList.add("on");
+  document.body.style.overflow = "hidden";
+  renderDepMap();
+}
+
+function closeDepMap(){
+  depMapOverlay.classList.remove("on");
+  document.body.style.overflow = "";
+  clearDependencyHighlights();
+}
+
+$("depMapBtn").onclick = openDepMap;
+$("depMapClose").onclick = closeDepMap;
+depMapOverlay.addEventListener("click",(e)=>{ if(e.target===depMapOverlay) closeDepMap(); });
+
+function renderDepMap(){
+  depMapNodes.innerHTML = "";
+  depMapSvg.innerHTML = "";
+
+  // Gather all tasks from current project (or all projects if ALL view)
+  const tasks = [];
+  const taskMap = new Map();
+
+  if(state.projectId === ALL_ID){
+    for(const pid of state.data.projectOrder){
+      const proj = getProject(pid);
+      if(!proj) continue;
+      for(const t of allTasks(proj)){
+        tasks.push(t);
+        taskMap.set(taskKey(t), t);
+      }
+    }
+  } else {
+    const proj = getProject(state.projectId);
+    if(proj){
+      for(const t of allTasks(proj)){
+        tasks.push(t);
+        taskMap.set(taskKey(t), t);
+      }
+    }
+  }
+
+  if(tasks.length === 0){
+    depMapNodes.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No tasks in this project</div>';
+    return;
+  }
+
+  // Build dependency levels (topological sort)
+  const levels = assignLevels(tasks, taskMap);
+  const maxLevel = Math.max(...Array.from(levels.values()), 0);
+
+  // Group tasks by level
+  const levelGroups = [];
+  for(let i = 0; i <= maxLevel; i++) levelGroups.push([]);
+  for(const t of tasks){
+    const lvl = levels.get(taskKey(t)) || 0;
+    levelGroups[lvl].push(t);
+  }
+
+  // Layout nodes
+  const nodePositions = new Map();
+  const nodeWidth = 160;
+  const nodeHeight = 36;
+  const levelGap = 80;
+  const nodeGap = 20;
+  const padding = 30;
+
+  let containerWidth = 0;
+  let containerHeight = padding;
+
+  for(let lvl = 0; lvl <= maxLevel; lvl++){
+    const group = levelGroups[lvl];
+    const groupWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
+    containerWidth = Math.max(containerWidth, groupWidth + padding * 2);
+  }
+
+  for(let lvl = 0; lvl <= maxLevel; lvl++){
+    const group = levelGroups[lvl];
+    const groupWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
+    const startX = (containerWidth - groupWidth) / 2;
+    const y = padding + lvl * (nodeHeight + levelGap);
+
+    for(let i = 0; i < group.length; i++){
+      const t = group[i];
+      const x = startX + i * (nodeWidth + nodeGap);
+      nodePositions.set(taskKey(t), {x, y, task: t});
+    }
+    containerHeight = y + nodeHeight + padding;
+  }
+
+  depMapContainer.style.minWidth = containerWidth + "px";
+  depMapContainer.style.minHeight = containerHeight + "px";
+
+  // Create node elements
+  for(const t of tasks){
+    const pos = nodePositions.get(taskKey(t));
+    if(!pos) continue;
+
+    const node = document.createElement("div");
+    node.className = "depMapNode";
+    node.textContent = t.text || "(untitled)";
+    node.style.left = pos.x + "px";
+    node.style.top = pos.y + "px";
+    node.style.width = nodeWidth + "px";
+    node.dataset.key = taskKey(t);
+
+    // Status styling
+    const proj = getProject(t.projectId);
+    if(proj){
+      const doneKeys = new Set([...proj.done_today, ...proj.done_week].map(x => x.id));
+      if(doneKeys.has(t.id)){
+        node.classList.add("done");
+      } else if(proj.paused.some(x => x.id === t.id)){
+        node.classList.add("paused");
+      } else if(proj.active.some(x => x.id === t.id)){
+        node.classList.add("active");
+      }
+    }
+
+    node.onclick = () => selectDepMapNode(t, nodePositions);
+    depMapNodes.appendChild(node);
+  }
+
+  // Draw arrows
+  depMapSvg.setAttribute("width", containerWidth);
+  depMapSvg.setAttribute("height", containerHeight);
+
+  for(const t of tasks){
+    const toPos = nodePositions.get(taskKey(t));
+    if(!toPos) continue;
+
+    const deps = t.dependsOn || [];
+    for(const depKey of deps){
+      const fromPos = nodePositions.get(depKey);
+      if(!fromPos) continue;
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", fromPos.x + nodeWidth / 2);
+      line.setAttribute("y1", fromPos.y + nodeHeight);
+      line.setAttribute("x2", toPos.x + nodeWidth / 2);
+      line.setAttribute("y2", toPos.y);
+      line.dataset.from = depKey;
+      line.dataset.to = taskKey(t);
+      depMapSvg.appendChild(line);
+    }
+  }
+}
+
+function assignLevels(tasks, taskMap){
+  const levels = new Map();
+  const visited = new Set();
+
+  function getLevel(t){
+    const key = taskKey(t);
+    if(levels.has(key)) return levels.get(key);
+    if(visited.has(key)) return 0; // cycle protection
+    visited.add(key);
+
+    let maxParentLevel = -1;
+    const deps = t.dependsOn || [];
+    for(const depKey of deps){
+      const parent = taskMap.get(depKey);
+      if(parent){
+        maxParentLevel = Math.max(maxParentLevel, getLevel(parent));
+      }
+    }
+    const lvl = maxParentLevel + 1;
+    levels.set(key, lvl);
+    return lvl;
+  }
+
+  for(const t of tasks) getLevel(t);
+  return levels;
+}
+
+function selectDepMapNode(task, nodePositions){
+  // Highlight in map
+  depMapNodes.querySelectorAll(".depMapNode").forEach(n => n.classList.remove("selected"));
+  const selectedNode = depMapNodes.querySelector(`[data-key="${taskKey(task)}"]`);
+  if(selectedNode) selectedNode.classList.add("selected");
+
+  // Highlight lines
+  const key = taskKey(task);
+  depMapSvg.querySelectorAll("line").forEach(line => {
+    line.classList.remove("highlight");
+    if(line.dataset.from === key || line.dataset.to === key){
+      line.classList.add("highlight");
+    }
+  });
+
+  // Highlight in main list
+  highlightDependencies(task);
+}
 
 function renderMoveProjectSelect(currentPid){
   const sel = $("moveProjectSelect");
