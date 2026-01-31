@@ -1221,16 +1221,16 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 
   /* List items */
   .list{gap:8px}
-  .item{padding:10px;gap:8px;border-radius:var(--r-md)}
-  .handle{width:26px;height:26px;font-size:14px;border-radius:8px}
-  .num{width:28px;font-size:11px;margin-top:4px}
-  .mainCol{min-width:180px}
-  .textDisplay{font-size:14px}
+  .item{padding:10px;gap:8px;border-radius:var(--r-md);flex-wrap:wrap;overflow:hidden}
+  .handle{width:24px;height:24px;font-size:14px;border-radius:8px;flex-shrink:0}
+  .num{width:24px;font-size:11px;margin-top:4px;flex-shrink:0}
+  .mainCol{min-width:0;flex:1;overflow:hidden}
+  .textDisplay{font-size:14px;word-wrap:break-word;overflow-wrap:break-word}
   .metaRow{gap:6px;font-size:12px}
   .metaChip{padding:4px 8px}
   .badge{font-size:10px;padding:3px 6px}
-  .iconRow{gap:6px}
-  .iconBtn{width:30px;height:30px}
+  .iconRow{gap:4px;flex-shrink:0}
+  .iconBtn{width:28px;height:28px;flex-shrink:0}
   .iconBtn svg{width:14px;height:14px}
 
   /* Dependency/blocker lines */
