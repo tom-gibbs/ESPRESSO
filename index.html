@@ -219,13 +219,13 @@ html[data-theme="light"] .sectionHeaderBtn{ background: rgba(255,255,255,.92); }
 .sectionHeaderBtn:active{transform:translateY(1px)}
 
 .projectMenu{
-  position:absolute;
-  top:52px;
-  left:0;
+  position:fixed;
   z-index:9998;
   display:none;
   width:min(520px, 92vw);
   min-width:320px;
+  max-height:calc(100vh - 120px);
+  overflow-y:auto;
   background: linear-gradient(180deg, rgba(17,19,25,.92), rgba(17,19,25,.82));
   border:1px solid rgba(255,255,255,.12);
   border-radius:18px;
@@ -294,6 +294,21 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
 
 /* Input */
 .addRow{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.inlineProjectSelect{
+  padding:10px 12px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  outline:none;
+  min-width:120px;
+  max-width:180px;
+}
+html[data-theme="light"] .inlineProjectSelect{background:rgba(255,255,255,.92)}
+.inlineProjectSelect:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(215,176,122,.18)}
 input[type="text"]{
   flex:1;border-radius:999px;border:1px solid var(--line);
   background:rgba(0,0,0,.12);
@@ -942,13 +957,13 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
     <div class="content">
       <div class="main">
 
-        <div class="sectionHeaderWrap">
+        <div id="sectionHeaderWrap" class="sectionHeaderWrap">
           <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button" title="Switch project">WORK</button>
 
           <div id="projectMenu" class="projectMenu" aria-hidden="true">
             <div class="projectMenuTop">
-              <input id="newProjectName" type="text" placeholder="New project name…" />
-              <button id="addProjectBtn" class="primary" type="button">Add</button>
+              <input id="newProjectName" type="text" placeholder="Search or create project…" />
+              <button id="addProjectBtn" class="primary" type="button" style="display:none">Add</button>
             </div>
             <div id="projectMenuList" class="projectMenuList"></div>
           </div>
@@ -956,6 +971,7 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 
         <div class="addRow">
           <input id="newText" type="text" placeholder="Add a task…" />
+          <select id="inlineProjectSelect" class="inlineProjectSelect" style="display:none"></select>
         </div>
 
         <div class="summaryTabs" id="summaryTabs">
@@ -1163,6 +1179,35 @@ $("compactToggle").onclick = () => {
 };
 
 /* =========================================================
+   VIEW STATE PERSISTENCE
+   ========================================================= */
+const VIEW_STATE_KEY = "espresso_view_state_v1";
+
+function saveViewState(){
+  try {
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
+      projectId: state.projectId,
+      page: state.page,
+      view: state.view,
+      doneFilter: state.doneFilter
+    }));
+  } catch(e){}
+}
+
+function loadViewState(){
+  try {
+    const saved = localStorage.getItem(VIEW_STATE_KEY);
+    if(saved){
+      const vs = JSON.parse(saved);
+      if(vs.projectId) state.projectId = vs.projectId;
+      if(vs.page) state.page = vs.page;
+      if(vs.view) state.view = vs.view;
+      if(vs.doneFilter) state.doneFilter = vs.doneFilter;
+    }
+  } catch(e){}
+}
+
+/* =========================================================
    ICONS (strings)
    ========================================================= */
 const ICONS = {
@@ -1342,8 +1387,16 @@ function closeProjectMenu(){
   projectMenu.setAttribute("aria-hidden","true");
 }
 function openProjectMenu(){
+  // Position dropdown below the button using fixed positioning
+  const btn = $("sectionHeaderBtn");
+  const rect = btn.getBoundingClientRect();
+  projectMenu.style.top = (rect.bottom + 8) + "px";
+  projectMenu.style.left = rect.left + "px";
+
   projectMenu.classList.add("on");
   projectMenu.setAttribute("aria-hidden","false");
+  $("newProjectName").value = "";
+  renderProjectMenu();
   $("newProjectName").focus();
 }
 $("sectionHeaderBtn").onclick = ()=> {
@@ -1767,6 +1820,7 @@ function deleteProject(pid){
 
   if(state.projectId === pid){
     state.projectId = state.data.projectOrder[0] || "work";
+    saveViewState();
   }
   queueSave();
   renderAll();
@@ -1783,6 +1837,10 @@ $("newProjectName").addEventListener("keydown",(e)=>{
     $("addProjectBtn").click();
   }
 });
+// Filter projects as user types
+$("newProjectName").addEventListener("input",(e)=>{
+  renderProjectMenu(e.target.value);
+});
 
 function projectDisplayName(pid){
   if(pid === ALL_ID) return "ALL PROJECTS";
@@ -1793,24 +1851,55 @@ function updateSectionHeader(){
   const label = projectDisplayName(state.projectId).toUpperCase();
   $("sectionHeaderBtn").textContent = label;
 }
-function renderProjectMenu(){
+function renderProjectMenu(filter = ""){
   projectMenuList.innerHTML = "";
+  const searchTerm = (filter || "").trim().toLowerCase();
 
-  const allRow = document.createElement("div");
-  allRow.className = "projectRow";
-  const allBtn = document.createElement("button");
-  allBtn.className = "projectNameBtn";
-  allBtn.type="button";
-  allBtn.innerHTML = `ALL PROJECTS${state.projectId===ALL_ID ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
-  allBtn.onclick = ()=>{
-    state.projectId = ALL_ID;
-    closeProjectMenu();
-    renderAll();
-  };
-  allRow.appendChild(allBtn);
-  projectMenuList.appendChild(allRow);
+  // Show/hide Add button based on whether there's text
+  const addBtn = $("addProjectBtn");
+  addBtn.style.display = searchTerm ? "" : "none";
 
-  for(const pid of state.data.projectOrder){
+  // Check if search matches any existing project exactly
+  const exactMatch = state.data.projectOrder.some(pid => {
+    const p = getProject(pid);
+    return p && p.name.toLowerCase() === searchTerm;
+  });
+
+  // Update Add button text
+  if(searchTerm && !exactMatch){
+    addBtn.textContent = `Create "${filter.trim()}"`;
+  } else {
+    addBtn.textContent = "Add";
+  }
+
+  // Filter projects
+  const filteredPids = state.data.projectOrder.filter(pid => {
+    const p = getProject(pid);
+    if(!p) return false;
+    if(!searchTerm) return true;
+    return p.name.toLowerCase().includes(searchTerm);
+  });
+
+  // Show ALL PROJECTS option (if matches filter or no filter)
+  if(!searchTerm || "all projects".includes(searchTerm)){
+    const allRow = document.createElement("div");
+    allRow.className = "projectRow";
+    const allBtn = document.createElement("button");
+    allBtn.className = "projectNameBtn";
+    allBtn.type="button";
+    allBtn.innerHTML = `ALL PROJECTS${state.projectId===ALL_ID ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
+    allBtn.onclick = ()=>{
+      state.projectId = ALL_ID;
+      $("newProjectName").value = "";
+      closeProjectMenu();
+      saveViewState();
+      renderAll();
+    };
+    allRow.appendChild(allBtn);
+    projectMenuList.appendChild(allRow);
+  }
+
+  for(const pid of filteredPids){
     const p = getProject(pid);
     if(!p) continue;
 
@@ -1823,7 +1912,9 @@ function renderProjectMenu(){
     btn.innerHTML = `${escapeHtml(p.name)}${state.projectId===pid ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
     btn.onclick = ()=>{
       state.projectId = pid;
+      $("newProjectName").value = "";
       closeProjectMenu();
+      saveViewState();
       renderAll();
     };
 
@@ -1835,6 +1926,17 @@ function renderProjectMenu(){
     row.appendChild(btn);
     row.appendChild(right);
     projectMenuList.appendChild(row);
+  }
+
+  // Show "no matches" message if filtering returned nothing
+  if(searchTerm && filteredPids.length === 0 && !("all projects".includes(searchTerm))){
+    const noMatch = document.createElement("div");
+    noMatch.className = "projectRow";
+    noMatch.style.justifyContent = "center";
+    noMatch.style.color = "var(--muted)";
+    noMatch.style.fontStyle = "italic";
+    noMatch.textContent = "No matching projects";
+    projectMenuList.appendChild(noMatch);
   }
 }
 </script>
@@ -2268,16 +2370,19 @@ function showFocusNotesForTask(task){
 function setDoneFilter(which){
   state.doneFilter = which;
   qsa(".doneBtn").forEach(b=>b.classList.toggle("active", b.dataset.done===which));
+  saveViewState();
   renderAll();
 }
 function setView(view){
   state.view = view;
   qsa(".summaryTab").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   stopEditing();
+  saveViewState();
   renderAll();
 }
 function setPage(page){
   state.page = page;
+  saveViewState();
   renderAll();
 }
 </script>
@@ -2440,12 +2545,21 @@ function addItem(text){
   const t = (text||"").trim();
   if(!t) return;
 
-  if(state.projectId === ALL_ID){
-    alert("Add tasks inside a specific project (not ALL PROJECTS).");
-    return;
+  // On summary page, use inline selector; otherwise use current project
+  let targetPid;
+  if(state.page === "summary"){
+    targetPid = $("inlineProjectSelect").value;
+  } else {
+    if(state.projectId === ALL_ID){
+      alert("Add tasks inside a specific project (not ALL PROJECTS).");
+      return;
+    }
+    targetPid = state.projectId;
   }
 
-  const proj = currentProject();
+  const proj = getProject(targetPid);
+  if(!proj) return;
+
   const newId = uid();
   proj.active.push(normalizeTask({
     id: newId,
@@ -3496,6 +3610,22 @@ function updateTabCounts(){
   });
 }
 
+function renderInlineProjectSelect(){
+  const sel = $("inlineProjectSelect");
+  sel.innerHTML = "";
+  for(const pid of state.data.projectOrder){
+    const p = getProject(pid);
+    if(!p) continue;
+    const opt = document.createElement("option");
+    opt.value = pid;
+    opt.textContent = p.name;
+    if(pid === state.projectId || (state.projectId === ALL_ID && pid === state.data.projectOrder[0])){
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  }
+}
+
 function renderAll(){
   ensureCurrentProject();
   updateSectionHeader();
@@ -3503,15 +3633,24 @@ function renderAll(){
   updateTabCounts();
 
   if(state.page === "summary"){
+    // Summary page: hide section header, show inline project selector
+    $("sectionHeaderWrap").style.display = "none";
+    $("inlineProjectSelect").style.display = "";
     $("summaryPage").style.display = "";
     $("list").style.display = "none";
     $("summaryTabs").style.display = "none";
     $("listFooter").style.display = "none";
     $("listTopRow").style.display = "none";
+    $("newText").disabled = false;
+    $("newText").placeholder = "Add a task…";
+    renderInlineProjectSelect();
     renderSummaryPage();
     return;
   }
 
+  // List page: show section header, hide inline project selector
+  $("sectionHeaderWrap").style.display = "";
+  $("inlineProjectSelect").style.display = "none";
   $("summaryPage").style.display = "none";
   $("list").style.display = "";
   $("summaryTabs").style.display = "";
@@ -3637,6 +3776,7 @@ $("forceSaveBtn").onclick = async ()=>{
 (async function init(){
   initTheme();
   initCompact();
+  loadViewState();
 
   qsa(".summaryTab").forEach(b=>b.classList.toggle("active", b.dataset.view===state.view));
   qsa(".doneBtn").forEach(b=>b.classList.toggle("active", b.dataset.done===state.doneFilter));
@@ -3645,7 +3785,8 @@ $("forceSaveBtn").onclick = async ()=>{
   loadTimer();
   startTicking();
 
-  setPage("list");
+  // Use saved page or default to list
+  setPage(state.page || "list");
   renderAll();
   updateHeaderTimer();
 
