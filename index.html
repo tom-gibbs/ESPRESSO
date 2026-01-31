@@ -5429,9 +5429,6 @@ qsa(".bottomNavBtn").forEach(btn => {
    SWIPE GESTURES (mobile only)
    ========================================================= */
 (function(){
-  if(!('ontouchstart' in window)) return;
-  if(window.innerWidth > 640) return;
-
   const SWIPE_THRESHOLD = 60;
   const MAX_SWIPE = 140;
   let activeWrap = null;
@@ -5639,9 +5636,6 @@ qsa(".bottomNavBtn").forEach(btn => {
 
 /* Tab swipe navigation */
 (function(){
-  if(!('ontouchstart' in window)) return;
-  if(window.innerWidth > 640) return;
-
   const tabOrder = ['active', 'paused', 'done'];
   let tabSwipeStartX = 0;
 
@@ -5655,6 +5649,7 @@ qsa(".bottomNavBtn").forEach(btn => {
 
   listEl.addEventListener('touchend', (e) => {
     if(e.target.closest('.item')) return;
+    if(window.innerWidth > 640) return; // Only on mobile
     const deltaX = e.changedTouches[0].clientX - tabSwipeStartX;
     if(Math.abs(deltaX) < 80) return;
 
