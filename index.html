@@ -146,12 +146,16 @@ html[data-theme="light"] .brand img{
   padding: 8px 10px;
   border-radius: 999px;
   white-space: nowrap;
+  cursor:pointer;
+  transition: background 0.15s ease;
 }
+.timerBadge:hover{background: rgba(215,176,122,.22)}
 html[data-theme="light"] .timerBadge{
   color: var(--text);
   background: rgba(154,106,58,.10);
   border: 1px solid rgba(154,106,58,.18);
 }
+html[data-theme="light"] .timerBadge:hover{background: rgba(154,106,58,.18)}
 
 /* Buttons */
 .actionsTop{display:flex;gap:8px;flex-wrap:wrap}
@@ -164,14 +168,26 @@ button{
   padding:10px 12px;
   font-size:13px;
   cursor:pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
+button:hover{background:rgba(255,255,255,.10)}
+button:active{transform:scale(0.97)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme="light"] button{ background: rgba(255,255,255,.86); }
+html[data-theme="light"] button:hover{ background: rgba(255,255,255,.96); }
 button.primary{background:rgba(215,176,122,.22);border-color:rgba(215,176,122,.32);font-weight:700}
+button.primary:hover{background:rgba(215,176,122,.32)}
 html[data-theme="light"] button.primary{ background: rgba(215,176,122,.26); border-color: rgba(154,106,58,.18); }
+html[data-theme="light"] button.primary:hover{ background: rgba(215,176,122,.36); }
 button.subtle{background:rgba(255,255,255,.04);color:var(--muted)}
+button.subtle:hover{background:rgba(255,255,255,.08);color:var(--text)}
 html[data-theme="light"] button.subtle{ background: rgba(15,23,42,.03); }
+html[data-theme="light"] button.subtle:hover{ background: rgba(15,23,42,.06); }
 button.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.20)}
+button.danger:hover{background:rgba(239,68,68,.18)}
 button.accent{background:rgba(215,176,122,.18);border-color:rgba(215,176,122,.28);font-weight:650}
+button.accent:hover{background:rgba(215,176,122,.28)}
+button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 button.iconTopBtn{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 button.iconTopBtn svg{width:18px;height:18px;display:block}
 
@@ -352,6 +368,10 @@ html[data-theme="light"] .doneBtn.active{ background: rgba(255,255,255,.92); }
 .item.priority{background:var(--itemBg2);border-color:rgba(215,176,122,.22)}
 .item.dragging{opacity:.6;transform:scale(1.02);box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .item.drag-over{margin-top:52px}
+@keyframes taskAdded{
+  0%{background:rgba(215,176,122,.25);transform:scale(1.01)}
+  100%{background:var(--itemBg);transform:scale(1)}
+}
 .item.nested{ margin-left: 18px; position: relative; }
 
 /* Subtask indentation */
@@ -514,6 +534,28 @@ html[data-theme="light"] .groupHeader{background: rgba(255,255,255,.92);color: r
 }
 html[data-theme="light"] .listFooter{ color: rgba(107,114,128,.85); }
 
+/* Empty state */
+.emptyState{
+  text-align:center;
+  padding:48px 24px;
+  color:var(--muted);
+}
+.emptyState .emptyIcon{
+  font-size:48px;
+  opacity:0.4;
+  margin-bottom:16px;
+}
+.emptyState .emptyText{
+  font-size:15px;
+  font-weight:600;
+  margin-bottom:8px;
+  color:var(--text);
+  opacity:0.7;
+}
+.emptyState .emptyHint{
+  font-size:13px;
+}
+
 /* =========================================================
    LINK MODAL
    ========================================================= */
@@ -631,10 +673,58 @@ html[data-theme="light"] .focusBox{
   margin: 0;
   letter-spacing: -0.02em;
   color: rgba(255,255,255,.95);
+  cursor: text;
+  padding: 4px 0;
+  border-radius: 8px;
+  transition: background 0.15s ease;
 }
+.focusMain:hover{background: rgba(255,255,255,.05)}
 html[data-theme="light"] .focusMain{ color: var(--text); font-weight:900; }
+html[data-theme="light"] .focusMain:hover{background: rgba(0,0,0,.03)}
+.focusMainInput{
+  width: 100%;
+  font-size: clamp(26px, 4vw, 48px);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: rgba(255,255,255,.95);
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 8px 12px;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(215,176,122,.18);
+}
+html[data-theme="light"] .focusMainInput{
+  color: var(--text);
+  background: rgba(255,255,255,.92);
+}
 .focusSub{color: rgba(238,240,244,.66);font-size: 14px;margin-top: 10px;}
 html[data-theme="light"] .focusSub{ color: var(--muted); }
+.focusEstimate{
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin: -6px -12px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.focusEstimate:hover{background: rgba(255,255,255,.08)}
+html[data-theme="light"] .focusEstimate:hover{background: rgba(0,0,0,.05)}
+.focusEstimateInput{
+  width: 100px;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(215,176,122,.18);
+}
+html[data-theme="light"] .focusEstimateInput{background: rgba(255,255,255,.92)}
 
 .focusTimerRow{margin-top: 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .focusTimerPill{
@@ -853,7 +943,7 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
       <div class="main">
 
         <div class="sectionHeaderWrap">
-          <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button">WORK</button>
+          <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button" title="Switch project">WORK</button>
 
           <div id="projectMenu" class="projectMenu" aria-hidden="true">
             <div class="projectMenuTop">
@@ -2356,8 +2446,9 @@ function addItem(text){
   }
 
   const proj = currentProject();
+  const newId = uid();
   proj.active.push(normalizeTask({
-    id: uid(),
+    id: newId,
     projectId: proj.id,
     text: t,
     createdAt: Date.now(),
@@ -2371,6 +2462,15 @@ function addItem(text){
   enforceDependenciesAllProjects();
   queueSave();
   renderAll();
+
+  // Scroll new task into view with subtle highlight
+  requestAnimationFrame(() => {
+    const newEl = document.querySelector(`[data-id="${newId}"]`);
+    if(newEl){
+      newEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      newEl.style.animation = "taskAdded 0.5s ease";
+    }
+  });
 }
 function pauseWithReason(task){
   if(state.projectId === ALL_ID){
@@ -2758,6 +2858,20 @@ function renderList(){
 
   if(state.projectId === ALL_ID){
     const items = currentList();
+    if(items.length === 0){
+      const empty = document.createElement("div");
+      empty.className = "emptyState";
+      const messages = {
+        active: { icon: "☕", text: "No active tasks", hint: "All projects are clear" },
+        paused: { icon: "⏸", text: "No paused tasks", hint: "No paused tasks across projects" },
+        done: { icon: "✓", text: "No completed tasks", hint: state.doneFilter === "today" ? "No tasks completed today" : "No tasks completed this week" }
+      };
+      const msg = messages[state.view] || messages.active;
+      empty.innerHTML = `<div class="emptyIcon">${msg.icon}</div><div class="emptyText">${msg.text}</div><div class="emptyHint">${msg.hint}</div>`;
+      ul.appendChild(empty);
+      renderListFooter();
+      return;
+    }
     items.forEach((task,i)=>{
       const li = document.createElement("li");
       renderItem(li, task, i, {showHandle:false, showNum:true});
@@ -2771,6 +2885,17 @@ function renderList(){
 
   if(state.view==="paused"){
     const blocks = pausedGroupedList(proj);
+    const totalPaused = blocks.reduce((sum, b) => sum + (b.items?.length || 0), 0);
+
+    if(totalPaused === 0){
+      const empty = document.createElement("div");
+      empty.className = "emptyState";
+      empty.innerHTML = `<div class="emptyIcon">⏸</div><div class="emptyText">No paused tasks</div><div class="emptyHint">Tasks you pause will appear here</div>`;
+      ul.appendChild(empty);
+      renderListFooter();
+      return;
+    }
+
     let countIndex = 0;
     const idx = allTasksIndexAllProjects();
 
@@ -2801,6 +2926,23 @@ function renderList(){
   }
 
   const items = currentList();
+
+  // Show empty state if no items
+  if(items.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "emptyState";
+    const messages = {
+      active: { icon: "☕", text: "No active tasks", hint: "Add a task above to get started" },
+      paused: { icon: "⏸", text: "No paused tasks", hint: "Tasks you pause will appear here" },
+      done: { icon: "✓", text: "No completed tasks", hint: state.doneFilter === "today" ? "Tasks you complete today will appear here" : "Tasks you complete this week will appear here" }
+    };
+    const msg = messages[state.view] || messages.active;
+    empty.innerHTML = `<div class="emptyIcon">${msg.icon}</div><div class="emptyText">${msg.text}</div><div class="emptyHint">${msg.hint}</div>`;
+    ul.appendChild(empty);
+    renderListFooter();
+    return;
+  }
+
   items.forEach((task,i)=>{
     const li = document.createElement("li");
     renderItem(li, task, i, {showHandle:true, showNum:true});
@@ -2931,11 +3073,52 @@ function getCurrentFocusTask(){
   return focusTopTask();
 }
 
+// Focus mode editing state
+let focusEditing = { field: null }; // field: null | "text" | "estimate"
+
 function renderFocus(){
   const top = getCurrentFocusTask();
   const isTopTask = !focusedTaskKey || (top && taskKey(top) === taskKey(focusTopTask() || {}));
+  const focusTextEl = $("focusText");
 
-  $("focusText").textContent = top ? top.text : "No active items";
+  // Task title - editable
+  if(focusEditing.field === "text" && top){
+    focusTextEl.innerHTML = "";
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "focusMainInput";
+    inp.value = top.text;
+    inp.onkeydown = (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        const newText = inp.value.trim();
+        if(newText){ top.text = newText; queueSave(); }
+        focusEditing.field = null;
+        renderFocus();
+        renderAll();
+      }
+      if(e.key === "Escape"){
+        focusEditing.field = null;
+        renderFocus();
+      }
+    };
+    inp.onblur = () => {
+      const newText = inp.value.trim();
+      if(newText && newText !== top.text){ top.text = newText; queueSave(); renderAll(); }
+      focusEditing.field = null;
+      renderFocus();
+    };
+    focusTextEl.appendChild(inp);
+    setTimeout(() => { inp.focus(); inp.select(); }, 0);
+  } else {
+    focusTextEl.textContent = top ? top.text : "No active items";
+    focusTextEl.onclick = top ? () => {
+      focusEditing.field = "text";
+      renderFocus();
+    } : null;
+    focusTextEl.style.cursor = top ? "text" : "default";
+    focusTextEl.title = top ? "Click to edit" : "";
+  }
 
   let metaText = "";
   if(top){
@@ -2943,19 +3126,73 @@ function renderFocus(){
     const activeList = proj?.active || [];
     const idx = activeList.findIndex(t => t.id === top.id);
     const position = idx >= 0 ? `Item ${idx + 1} of ${activeList.length}` : "Focused task";
-    metaText = `${projectDisplayName(top.projectId).toUpperCase()} · ${position}${top.estimateMins>0 ? ` · Estimate: ${top.estimateMins} min` : ""}`;
+    metaText = `${projectDisplayName(top.projectId).toUpperCase()} · ${position}`;
     if(!isTopTask) metaText += " · (Custom focus)";
   }else{
     metaText = projectDisplayName(state.projectId).toUpperCase();
   }
   $("focusMeta").textContent = metaText;
 
+  // Estimate line - editable
   const est = top?.estimateMins ?? 0;
-  if(top && est>0){
-    focusEstimateLine.style.display="";
-    focusEstimateLine.textContent = `Estimate: ${est} min`;
-  }else{
-    focusEstimateLine.style.display="none";
+  if(top){
+    focusEstimateLine.style.display = "";
+
+    if(focusEditing.field === "estimate"){
+      focusEstimateLine.innerHTML = "";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.className = "focusEstimateInput";
+      inp.value = est > 0 ? String(est) : "";
+      inp.placeholder = "minutes";
+      inp.onkeydown = (e) => {
+        if(e.key === "Enter"){
+          e.preventDefault();
+          const val = Math.round(Number(inp.value.trim()));
+          if(Number.isFinite(val) && val >= 0){
+            top.estimateMins = val;
+            syncTimerWithEstimate(top);
+            queueSave();
+          }
+          focusEditing.field = null;
+          renderFocus();
+          renderAll();
+        }
+        if(e.key === "Escape"){
+          focusEditing.field = null;
+          renderFocus();
+        }
+      };
+      inp.onblur = () => {
+        const val = Math.round(Number(inp.value.trim()));
+        if(Number.isFinite(val) && val >= 0 && val !== est){
+          top.estimateMins = val;
+          syncTimerWithEstimate(top);
+          queueSave();
+          renderAll();
+        }
+        focusEditing.field = null;
+        renderFocus();
+      };
+      focusEstimateLine.appendChild(document.createTextNode("Estimate: "));
+      focusEstimateLine.appendChild(inp);
+      focusEstimateLine.appendChild(document.createTextNode(" min"));
+      setTimeout(() => { inp.focus(); inp.select(); }, 0);
+    } else {
+      const estSpan = document.createElement("span");
+      estSpan.className = "focusEstimate";
+      estSpan.innerHTML = est > 0
+        ? `Estimate: <strong>${est} min</strong> <span style="opacity:.5;font-size:12px">(click to edit)</span>`
+        : `<span style="opacity:.7">No estimate</span> <span style="opacity:.5;font-size:12px">(click to set)</span>`;
+      estSpan.onclick = () => {
+        focusEditing.field = "estimate";
+        renderFocus();
+      };
+      focusEstimateLine.innerHTML = "";
+      focusEstimateLine.appendChild(estSpan);
+    }
+  } else {
+    focusEstimateLine.style.display = "none";
   }
 
   showFocusNotesForTask(top);
@@ -2998,6 +3235,7 @@ function pauseFromFocus(task){
 
 function openFocus(){
   focusedTaskKey = null; // Default to top task
+  focusEditing.field = null; // Reset editing state
   focusOverlay.classList.add("on");
   document.body.style.overflow="hidden";
   renderFocus();
@@ -3005,6 +3243,7 @@ function openFocus(){
 }
 
 function openFocusForTask(task){
+  focusEditing.field = null; // Reset editing state
   focusedTaskKey = taskKey(task);
   focusOverlay.classList.add("on");
   document.body.style.overflow="hidden";
@@ -3016,6 +3255,7 @@ function closeFocus(){
   focusOverlay.classList.remove("on");
   document.body.style.overflow="";
   focusedTaskKey = null;
+  focusEditing.field = null;
 }
 focusOverlay.addEventListener("click",(e)=>{ if(e.target===focusOverlay) closeFocus(); });
 
@@ -3098,12 +3338,18 @@ function fmt(ms){
 function updateHeaderTimer(){
   if(timerRunning || timerRemainingMs>0){
     timerHeader.style.display="inline-flex";
+    const timeStr = timerRunning
+      ? fmt(Math.max(0, timerEndMs-Date.now()))
+      : fmt(timerRemainingMs);
     timerHeader.textContent = timerRunning
-      ? `Timer ${fmt(Math.max(0, timerEndMs-Date.now()))}`
-      : `Paused ${fmt(timerRemainingMs)}`;
+      ? `Timer ${timeStr}`
+      : `Paused ${timeStr}`;
+    // Update page title with timer
+    document.title = `${timeStr} - ESPRESSO`;
   }else{
     timerHeader.style.display="none";
     timerHeader.textContent="";
+    document.title = "ESPRESSO";
   }
 }
 function updateFocusTimerUI(){
@@ -3223,10 +3469,38 @@ $("focusTimerReset").onclick = ()=>{
 /* =========================================================
    MASTER RENDER
    ========================================================= */
+function updateTabCounts(){
+  // Update tab labels with counts
+  const getCount = (view) => {
+    if(state.projectId === ALL_ID){
+      return Object.values(state.data.projects).reduce((sum, p) => {
+        if(view === "active") return sum + p.active.length;
+        if(view === "paused") return sum + p.paused.length;
+        if(view === "done") return sum + (state.doneFilter === "today" ? p.done_today.length : p.done_week.length);
+        return sum;
+      }, 0);
+    }
+    const proj = currentProject();
+    if(!proj) return 0;
+    if(view === "active") return proj.active.length;
+    if(view === "paused") return proj.paused.length;
+    if(view === "done") return state.doneFilter === "today" ? proj.done_today.length : proj.done_week.length;
+    return 0;
+  };
+
+  qsa(".summaryTab").forEach(tab => {
+    const view = tab.dataset.view;
+    const count = getCount(view);
+    const labels = { active: "Active", paused: "Paused", done: "Done" };
+    tab.textContent = count > 0 ? `${labels[view]} (${count})` : labels[view];
+  });
+}
+
 function renderAll(){
   ensureCurrentProject();
   updateSectionHeader();
   renderProjectMenu();
+  updateTabCounts();
 
   if(state.page === "summary"){
     $("summaryPage").style.display = "";
@@ -3268,16 +3542,21 @@ $("clearDoneBtn").onclick = ()=>{
   const proj = currentProject();
   const arr = (state.doneFilter==="today") ? proj.done_today : proj.done_week;
   if(arr.length===0) return;
-  if(confirm(`Clear ${state.doneFilter==="today" ? "Done Today" : "Done This Week"} for ${projectDisplayName(state.projectId)}?`)){
+  const period = state.doneFilter==="today" ? "today" : "this week";
+  if(confirm(`Clear ${arr.length} completed task${arr.length===1?"":"s"} from ${period}?\n\nThis cannot be undone.`)){
     clearDoneCurrent();
   }
 };
 
 $("focusBtn").onclick = openFocus;
 $("focusClose").onclick = closeFocus;
+timerHeader.onclick = openFocus; // Click timer badge to open focus mode
+timerHeader.title = "Click to open focus mode";
 
 $("resetBtn").onclick = ()=>{
-  if(!confirm("Clear ALL projects and tasks? This overwrites state.json.")) return;
+  const totalTasks = Object.values(state.data.projects).reduce((sum, p) =>
+    sum + p.active.length + p.paused.length + p.done_today.length, 0);
+  if(!confirm(`⚠️ Reset ESPRESSO?\n\nThis will permanently delete:\n• ${Object.keys(state.data.projects).length} projects\n• ${totalTasks} tasks\n\nThis cannot be undone.`)) return;
 
   state.data.projects = {};
   state.data.projectOrder = [];
