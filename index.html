@@ -2762,7 +2762,6 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
       const opt = document.createElement("div");
       opt.className = "colorOption" + (task.color === c ? " active" : "");
       opt.style.background = c || "var(--line)";
-      if(!c) opt.innerHTML = "✕";
       opt.onclick = (ev) => {
         ev.stopPropagation();
         task.color = c;
