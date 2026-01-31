@@ -1131,18 +1131,19 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
     padding:8px;
   }
   .projectMenuTop{padding:4px 4px 8px;gap:6px}
-  .projectMenuTop input{padding:8px 10px;font-size:12px}
+  .projectMenuTop input{padding:8px 10px}
   .projectMenuList{padding:6px 4px 4px;gap:4px;max-height:240px}
   .projectRow{padding:8px;gap:8px;border-radius:12px}
   .projectNameBtn{font-size:13px}
   #reorderProjectsBtn{padding:6px 10px;font-size:12px}
 
-  /* Add task row */
+  /* Add task row - 16px min font prevents iOS zoom */
   .addRow{gap:8px;margin-bottom:8px;flex-wrap:wrap}
-  input[type="text"]{padding:10px 12px;font-size:13px}
+  input[type="text"],
+  textarea,
+  select{font-size:16px}
   .inlineProjectSelect{
     padding:8px 20px 8px 10px;
-    font-size:12px;
     min-width:100px;
     max-width:140px;
     background-position:right 6px center;
@@ -1223,7 +1224,7 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
   .focusTimerReset svg{width:16px;height:16px}
   .focusNotes{margin-top:12px;padding:10px;border-radius:14px}
   .focusNotesTitle{font-size:11px}
-  .focusNotesBox{margin-top:8px;padding:10px;font-size:13px;min-height:100px;border-radius:12px}
+  .focusNotesBox{margin-top:8px;padding:10px;min-height:100px;border-radius:12px}
   .focusBtns{gap:8px;margin-top:14px}
   .focusBtns button{padding:8px 12px;font-size:12px}
 
