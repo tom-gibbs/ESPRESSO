@@ -1,8 +1,8 @@
 const CACHE_NAME = 'espresso-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/espresso-icon.png'
+  './',
+  './index.html',
+  './espresso-icon.png'
 ];
 
 // Install: cache core assets

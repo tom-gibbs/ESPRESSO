@@ -2,7 +2,7 @@
   "name": "ESPRESSO",
   "short_name": "ESPRESSO",
   "description": "The calm before the brainstorm - Task management app",
-  "start_url": "/index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#07080b",
   "theme_color": "#d7b07a",
