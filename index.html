@@ -308,7 +308,7 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
 /* Input */
 .addRow{display:flex;gap:10px;align-items:center;margin-bottom:10px}
 .inlineProjectSelect{
-  padding:10px 8px 10px 12px;
+  padding:10px 24px 10px 12px;
   border-radius:999px;
   border:1px solid var(--line);
   background:rgba(255,255,255,.06);
@@ -319,8 +319,18 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
   outline:none;
   min-width:120px;
   max-width:180px;
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
 }
-html[data-theme="light"] .inlineProjectSelect{background:rgba(255,255,255,.92)}
+html[data-theme="light"] .inlineProjectSelect{
+  background:rgba(255,255,255,.92);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
+}
 .inlineProjectSelect:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(215,176,122,.18)}
 input[type="text"]{
   flex:1;border-radius:999px;border:1px solid var(--line);
@@ -2732,7 +2742,7 @@ function assignLevels(tasks, taskMap){
 function selectDepMapNode(task, nodePositions){
   // Close dependency map and open focus mode for this task
   closeDepMap();
-  openFocusForTask(task);
+  openFocusForTask(task, true); // true = opened from dependency map
 }
 
 function renderMoveProjectSelect(currentPid){
@@ -4014,18 +4024,22 @@ function pauseFromFocus(task){
   updateFocusTimerUI();
 }
 
+let focusOpenedFromDepMap = false;
+
 function openFocus(){
   focusedTaskKey = null; // Default to top task
   focusEditing.field = null; // Reset editing state
+  focusOpenedFromDepMap = false;
   focusOverlay.classList.add("on");
   document.body.style.overflow="hidden";
   renderFocus();
   updateFocusTimerUI();
 }
 
-function openFocusForTask(task){
+function openFocusForTask(task, fromDepMap = false){
   focusEditing.field = null; // Reset editing state
   focusedTaskKey = taskKey(task);
+  focusOpenedFromDepMap = fromDepMap;
   focusOverlay.classList.add("on");
   document.body.style.overflow="hidden";
   renderFocus();
@@ -4037,6 +4051,12 @@ function closeFocus(){
   document.body.style.overflow="";
   focusedTaskKey = null;
   focusEditing.field = null;
+
+  // Return to dependency map if that's where we came from
+  if(focusOpenedFromDepMap){
+    focusOpenedFromDepMap = false;
+    openDepMap();
+  }
 }
 focusOverlay.addEventListener("click",(e)=>{ if(e.target===focusOverlay) closeFocus(); });
 
