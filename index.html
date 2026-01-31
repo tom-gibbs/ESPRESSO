@@ -1108,6 +1108,60 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .syncActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 
 /* =========================================================
+   SWIPE GESTURES (mobile)
+   ========================================================= */
+/* Swipe container for tasks */
+.swipeContainer{
+  position:relative;
+  overflow:hidden;
+  border-radius:var(--r-lg);
+}
+.swipeContainer .item{
+  position:relative;
+  z-index:2;
+  transition:transform 0.2s ease;
+  border-radius:var(--r-lg);
+}
+.swipeContainer.swiping .item{
+  transition:none;
+}
+.swipeActions{
+  position:absolute;
+  top:0;right:0;bottom:0;
+  display:flex;
+  align-items:stretch;
+  z-index:1;
+}
+.swipeAction{
+  display:flex;align-items:center;justify-content:center;
+  width:70px;
+  border:0;
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  flex-direction:column;
+  gap:4px;
+}
+.swipeAction svg{width:20px;height:20px}
+.swipeAction.done{background:#22c55e}
+.swipeAction.delete{background:#ef4444}
+.swipeAction.pause{background:#eab308}
+
+/* Pull to refresh */
+.pullRefresh{
+  display:none;
+  justify-content:center;
+  align-items:center;
+  padding:16px;
+  color:var(--muted);
+  font-size:13px;
+  gap:8px;
+}
+.pullRefresh.visible{display:flex}
+.pullRefresh.refreshing svg{animation:spin 1s linear infinite}
+
+/* =========================================================
    BOTTOM NAVIGATION (mobile only)
    ========================================================= */
 .bottomNav{
@@ -5366,6 +5420,238 @@ qsa(".bottomNavBtn").forEach(btn => {
     }
   };
 });
+
+/* =========================================================
+   SWIPE GESTURES (mobile only)
+   ========================================================= */
+(function(){
+  if(!('ontouchstart' in window)) return;
+
+  const SWIPE_THRESHOLD = 60;
+  const MAX_SWIPE = 140;
+  let activeSwipeItem = null;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let isSwiping = false;
+
+  function closeActiveSwipe(){
+    if(activeSwipeItem){
+      activeSwipeItem.style.transform = '';
+      activeSwipeItem.classList.remove('swiped');
+      activeSwipeItem = null;
+    }
+  }
+
+  function getTaskFromItem(item){
+    const id = item.dataset.id;
+    if(!id) return null;
+    for(const proj of Object.values(state.data.projects)){
+      for(const t of allTasks(proj)){
+        if(t.id === id) return t;
+      }
+    }
+    return null;
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    const item = e.target.closest('.item');
+    if(!item) return;
+
+    // Close any other open swipe
+    if(activeSwipeItem && activeSwipeItem !== item){
+      closeActiveSwipe();
+    }
+
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = 0;
+    isSwiping = false;
+
+    item._swipeStartX = startX;
+  }, {passive: true});
+
+  document.addEventListener('touchmove', (e) => {
+    const item = e.target.closest('.item');
+    if(!item || item._swipeStartX === undefined) return;
+
+    const deltaX = e.touches[0].clientX - item._swipeStartX;
+    const deltaY = e.touches[0].clientY - startY;
+
+    // If scrolling vertically, don't swipe
+    if(!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)){
+      item._swipeStartX = undefined;
+      return;
+    }
+
+    // Only allow left swipe (negative delta)
+    if(deltaX > 10){
+      // Swiping right - close if open
+      if(activeSwipeItem === item){
+        item.style.transform = '';
+        item.classList.remove('swiped');
+        activeSwipeItem = null;
+      }
+      return;
+    }
+
+    if(deltaX < -10){
+      isSwiping = true;
+      currentX = Math.max(deltaX, -MAX_SWIPE);
+      item.style.transform = `translateX(${currentX}px)`;
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchend', (e) => {
+    const item = e.target.closest('.item');
+    if(!item || item._swipeStartX === undefined) return;
+
+    item._swipeStartX = undefined;
+
+    if(isSwiping){
+      if(currentX < -SWIPE_THRESHOLD){
+        // Keep open
+        item.style.transform = `translateX(-${MAX_SWIPE}px)`;
+        item.classList.add('swiped');
+        activeSwipeItem = item;
+      } else {
+        // Snap back
+        item.style.transform = '';
+        item.classList.remove('swiped');
+        if(activeSwipeItem === item) activeSwipeItem = null;
+      }
+    }
+    isSwiping = false;
+  }, {passive: true});
+
+  // Handle swipe action clicks
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('.item');
+
+    // If clicking outside swiped item, close it
+    if(activeSwipeItem && (!item || item !== activeSwipeItem)){
+      closeActiveSwipe();
+    }
+
+    // Check for swipe action buttons (we'll add these to items)
+    if(e.target.closest('.swipeActionDone')){
+      const swipedItem = e.target.closest('.item');
+      if(swipedItem){
+        const task = getTaskFromItem(swipedItem);
+        if(task){
+          closeActiveSwipe();
+          markDone(task);
+        }
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    if(e.target.closest('.swipeActionDelete')){
+      const swipedItem = e.target.closest('.item');
+      if(swipedItem){
+        const task = getTaskFromItem(swipedItem);
+        if(task && confirm("Delete this task?")){
+          closeActiveSwipe();
+          deleteTask(task);
+          renderAll();
+        }
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  // Add swipe actions to items after render
+  const origRenderList = renderList;
+  renderList = function(){
+    origRenderList();
+    // Add swipe action buttons to items on mobile
+    if(window.innerWidth <= 640){
+      qsa('.item').forEach(item => {
+        if(item.querySelector('.swipeActions')) return;
+        const actions = document.createElement('div');
+        actions.className = 'swipeActions';
+        actions.innerHTML = `
+          <button class="swipeAction done swipeActionDone" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Done
+          </button>
+          <button class="swipeAction delete swipeActionDelete" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        `;
+        item.parentElement.style.position = 'relative';
+        item.parentElement.style.overflow = 'hidden';
+        item.parentElement.insertBefore(actions, item);
+      });
+    }
+  };
+
+  // Pull to refresh
+  let pullStartY = 0;
+  let isPulling = false;
+
+  document.addEventListener('touchstart', (e) => {
+    if(window.scrollY === 0){
+      pullStartY = e.touches[0].clientY;
+      isPulling = true;
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchmove', (e) => {
+    if(!isPulling) return;
+    const pullDelta = e.touches[0].clientY - pullStartY;
+    if(pullDelta > 80 && window.scrollY === 0){
+      document.body.classList.add('pull-ready');
+    } else {
+      document.body.classList.remove('pull-ready');
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchend', () => {
+    if(document.body.classList.contains('pull-ready')){
+      document.body.classList.remove('pull-ready');
+      // Trigger sync
+      if($("syncBtn")) $("syncBtn").click();
+    }
+    isPulling = false;
+  }, {passive: true});
+})();
+
+/* Tab swipe navigation */
+(function(){
+  if(!('ontouchstart' in window)) return;
+
+  const tabOrder = ['active', 'paused', 'done'];
+  let tabSwipeStartX = 0;
+
+  const listEl = $('list');
+  if(!listEl) return;
+
+  listEl.addEventListener('touchstart', (e) => {
+    if(e.target.closest('.item')) return; // Don't interfere with item swipes
+    tabSwipeStartX = e.touches[0].clientX;
+  }, {passive: true});
+
+  listEl.addEventListener('touchend', (e) => {
+    if(e.target.closest('.item')) return;
+    const deltaX = e.changedTouches[0].clientX - tabSwipeStartX;
+    if(Math.abs(deltaX) < 80) return; // Not enough swipe
+
+    const currentIdx = tabOrder.indexOf(state.view);
+    if(deltaX > 0 && currentIdx > 0){
+      // Swipe right - go to previous tab
+      state.view = tabOrder[currentIdx - 1];
+      renderAll();
+    } else if(deltaX < 0 && currentIdx < tabOrder.length - 1){
+      // Swipe left - go to next tab
+      state.view = tabOrder[currentIdx + 1];
+      renderAll();
+    }
+  }, {passive: true});
+})();
 </script>
 
 </body>
