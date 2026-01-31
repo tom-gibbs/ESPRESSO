@@ -1158,8 +1158,12 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .brand .subtitle{font-size:11px}
   .spacer{display:none}
 
-  /* Hide buttons that are in bottom nav */
-  #syncBtn,#focusBtn{display:none}
+  /* Hide buttons that are in bottom nav or not needed on mobile */
+  #syncBtn,#focusBtn,#compactToggle,.depMapBtn{display:none}
+
+  /* Force compact mode on mobile */
+  .metaRow{display:none}
+  .blockerLine,.depLine{padding:6px 10px;font-size:11px;margin-top:6px}
 
   /* Status and timer row */
   .status{justify-content:center;font-size:12px}
