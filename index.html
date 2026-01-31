@@ -761,6 +761,10 @@ html[data-theme="light"] .depMapBox{
   justify-content:center;
 }
 html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
+.depMapWrapper{
+  position:relative;
+  flex-shrink:0;
+}
 .depMapSvg{
   position:absolute;
   top:0;left:0;
@@ -1191,8 +1195,10 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
         <span class="legendItem"><span class="legendDot done"></span>Done</span>
       </div>
       <div id="depMapContainer" class="depMapContainer">
-        <svg id="depMapSvg" class="depMapSvg"></svg>
-        <div id="depMapNodes" class="depMapNodes"></div>
+        <div id="depMapWrapper" class="depMapWrapper">
+          <svg id="depMapSvg" class="depMapSvg"></svg>
+          <div id="depMapNodes" class="depMapNodes"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -2610,6 +2616,9 @@ function renderDepMap(){
   }
 
   const containerHeight = currentY - levelGap + padding;
+  const depMapWrapper = $("depMapWrapper");
+  depMapWrapper.style.width = containerWidth + "px";
+  depMapWrapper.style.height = containerHeight + "px";
   depMapNodes.style.width = containerWidth + "px";
   depMapNodes.style.height = containerHeight + "px";
 
