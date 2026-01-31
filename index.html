@@ -1128,9 +1128,12 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .swipeActions{
   position:absolute;
   top:0;right:0;bottom:0;
-  display:flex;
+  display:none;
   align-items:stretch;
   z-index:1;
+}
+@media (max-width: 640px){
+  .swipeActions{display:flex}
 }
 .swipeAction{
   display:flex;align-items:center;justify-content:center;
