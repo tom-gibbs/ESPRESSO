@@ -2730,22 +2730,9 @@ function assignLevels(tasks, taskMap){
 }
 
 function selectDepMapNode(task, nodePositions){
-  // Highlight in map
-  depMapNodes.querySelectorAll(".depMapNode").forEach(n => n.classList.remove("selected"));
-  const selectedNode = depMapNodes.querySelector(`[data-key="${taskKey(task)}"]`);
-  if(selectedNode) selectedNode.classList.add("selected");
-
-  // Highlight edges (paths)
-  const key = taskKey(task);
-  depMapSvg.querySelectorAll(".depMapEdge").forEach(edge => {
-    edge.classList.remove("highlight");
-    if(edge.dataset.from === key || edge.dataset.to === key){
-      edge.classList.add("highlight");
-    }
-  });
-
-  // Highlight in main list
-  highlightDependencies(task);
+  // Close dependency map and open focus mode for this task
+  closeDepMap();
+  openFocusForTask(task);
 }
 
 function renderMoveProjectSelect(currentPid){
