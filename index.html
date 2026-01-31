@@ -365,6 +365,32 @@ html[data-theme="light"] input[type="text"]:focus{
   box-shadow: 0 0 0 4px rgba(215,176,122,.18);
 }
 
+/* Voice input button */
+.voiceBtn{
+  width:42px;height:42px;padding:0;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.06);
+  color:var(--muted);cursor:pointer;
+  transition:all 0.15s ease;
+  flex-shrink:0;
+}
+.voiceBtn svg{width:18px;height:18px;display:block}
+.voiceBtn:hover{background:rgba(255,255,255,.10);color:var(--text)}
+html[data-theme="light"] .voiceBtn{background:rgba(255,255,255,.92)}
+html[data-theme="light"] .voiceBtn:hover{background:rgba(0,0,0,.05)}
+.voiceBtn.listening{
+  background:rgba(239,68,68,.15);
+  border-color:rgba(239,68,68,.4);
+  color:#ef4444;
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}
+  50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}
+}
+.voiceBtn.unsupported{display:none}
+
 /* Tabs */
 .summaryTabs{
   display:inline-flex;background:rgba(255,255,255,.04);
@@ -1082,11 +1108,42 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .syncActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 
 /* =========================================================
+   BOTTOM NAVIGATION (mobile only)
+   ========================================================= */
+.bottomNav{
+  display:none;
+  position:fixed;
+  bottom:0;left:0;right:0;
+  z-index:9997;
+  background:linear-gradient(180deg, rgba(17,19,25,.95), rgba(17,19,25,.98));
+  border-top:1px solid var(--line);
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  backdrop-filter:blur(10px);
+}
+html[data-theme="light"] .bottomNav{
+  background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.98));
+}
+.bottomNavBtn{
+  flex:1;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:transparent;border:0;padding:8px 4px;
+  color:var(--muted);cursor:pointer;
+  border-radius:12px;transition:all 0.15s ease;
+}
+.bottomNavBtn svg{width:22px;height:22px;display:block}
+.bottomNavBtn span{font-size:10px;font-weight:600}
+.bottomNavBtn:hover,.bottomNavBtn:active{color:var(--text);background:rgba(255,255,255,.06)}
+html[data-theme="light"] .bottomNavBtn:hover,
+html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
+.bottomNavBtn.active{color:var(--accent)}
+
+/* =========================================================
    MOBILE RESPONSIVE
    ========================================================= */
 @media (max-width: 640px) {
-  /* Reduce container margins */
-  .wrap{margin:12px auto 24px;padding:0 8px}
+  /* Show bottom nav, add padding for it */
+  .bottomNav{display:flex}
+  .wrap{margin:12px auto 80px;padding:0 8px}
 
   /* Topbar: stack vertically */
   .topbar{
@@ -1100,6 +1157,9 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
   .brand h2{font-size:13px}
   .brand .subtitle{font-size:11px}
   .spacer{display:none}
+
+  /* Hide buttons that are in bottom nav */
+  #syncBtn,#focusBtn{display:none}
 
   /* Status and timer row */
   .status{justify-content:center;font-size:12px}
@@ -1138,10 +1198,12 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
   #reorderProjectsBtn{padding:6px 10px;font-size:12px}
 
   /* Add task row - 16px min font prevents iOS zoom */
-  .addRow{gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  .addRow{gap:8px;margin-bottom:8px;flex-wrap:nowrap}
   input[type="text"],
   textarea,
   select{font-size:16px}
+  .voiceBtn{width:38px;height:38px}
+  .voiceBtn svg{width:16px;height:16px}
   .inlineProjectSelect{
     padding:8px 20px 8px 10px;
     min-width:100px;
@@ -1348,6 +1410,9 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 
         <div class="addRow">
           <input id="newText" type="text" placeholder="Add a task…" />
+          <button id="voiceInputBtn" class="voiceBtn" type="button" title="Voice input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
           <select id="inlineProjectSelect" class="inlineProjectSelect" style="display:none"></select>
         </div>
 
@@ -4663,6 +4728,55 @@ $("newText").addEventListener("keydown",(e)=>{
   }
 });
 
+/* Voice Input using Web Speech API */
+const voiceBtn = $("voiceInputBtn");
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(!SpeechRecognition){
+  voiceBtn.classList.add("unsupported");
+} else {
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = "en-US";
+
+  let isListening = false;
+
+  voiceBtn.onclick = () => {
+    if(isListening){
+      recognition.stop();
+      return;
+    }
+    recognition.start();
+  };
+
+  recognition.onstart = () => {
+    isListening = true;
+    voiceBtn.classList.add("listening");
+    $("newText").placeholder = "Listening...";
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    voiceBtn.classList.remove("listening");
+    $("newText").placeholder = "Add a task…";
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    const input = $("newText");
+    input.value = input.value ? input.value + " " + transcript : transcript;
+    input.focus();
+  };
+
+  recognition.onerror = (event) => {
+    console.log("Speech recognition error:", event.error);
+    isListening = false;
+    voiceBtn.classList.remove("listening");
+    $("newText").placeholder = "Add a task…";
+  };
+}
+
 $("clearDoneBtn").onclick = ()=>{
   let totalCount = 0;
   if(state.projectId === ALL_ID){
@@ -5199,7 +5313,52 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.log('SW registration failed:', err));
   });
 }
+
+/* Bottom Navigation handlers */
+qsa(".bottomNavBtn").forEach(btn => {
+  btn.onclick = () => {
+    const action = btn.dataset.action;
+    switch(action){
+      case "summary":
+        state.projectId = SUMMARY_ID;
+        state.view = "active";
+        renderAll();
+        window.scrollTo({top:0,behavior:"smooth"});
+        break;
+      case "add":
+        $("newText").focus();
+        window.scrollTo({top:0,behavior:"smooth"});
+        break;
+      case "focus":
+        $("focusBtn").click();
+        break;
+      case "sync":
+        $("syncBtn").click();
+        break;
+    }
+  };
+});
 </script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="bottomNav" id="bottomNav">
+  <button class="bottomNavBtn" data-action="summary" title="Summary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span>Summary</span>
+  </button>
+  <button class="bottomNavBtn" data-action="add" title="Add Task">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Add</span>
+  </button>
+  <button class="bottomNavBtn" data-action="focus" title="Focus Mode">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    <span>Focus</span>
+  </button>
+  <button class="bottomNavBtn" data-action="sync" title="Sync">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+    <span>Sync</span>
+  </button>
+</nav>
 
 </body>
 </html>
