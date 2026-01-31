@@ -716,7 +716,7 @@ html[data-theme="light"] .moveSelect{ background: rgba(255,255,255,.92); color: 
   background:var(--paper);
   border-radius:var(--r-xl);
   padding:20px;
-  width:min(800px, 94vw);
+  width:min(900px, 94vw);
   max-height:85vh;
   display:flex;
   flex-direction:column;
@@ -762,8 +762,8 @@ html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
   top:0;left:0;
   pointer-events:none;
 }
-.depMapSvg line{stroke:var(--muted);stroke-width:2;opacity:0.5}
-.depMapSvg line.highlight{stroke:var(--accent);stroke-width:2.5;opacity:1}
+.depMapSvg .depMapEdge{transition:all 0.15s ease}
+.depMapSvg .depMapEdge.highlight{stroke:var(--accent);stroke-width:2.5;opacity:1;marker-end:url(#arrowhead-highlight)}
 .depMapNodes{position:relative}
 .depMapNode{
   position:absolute;
@@ -1764,6 +1764,14 @@ for (const [pid, proj] of Object.entries(payload.projects)) {
   // FIX: Detect and break any cycles in dependencies on load
   detectAndBreakCycles(payload.projects);
 
+  // Initialize globalOrder for cross-project task ordering
+  if(!payload.globalOrder || typeof payload.globalOrder !== "object"){
+    payload.globalOrder = { active: [], paused: [], done: [] };
+  }
+  for(const key of ["active", "paused", "done"]){
+    if(!Array.isArray(payload.globalOrder[key])) payload.globalOrder[key] = [];
+  }
+
   return payload;
 }
 
@@ -1819,7 +1827,8 @@ function makePayload(){
     meta: { ...state.data.meta, owner: CLIENT_ID },
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
-    projects_order: state.data.projectOrder
+    projects_order: state.data.projectOrder,
+    globalOrder: state.data.globalOrder
   };
   return JSON.stringify(out);
 }
@@ -2103,6 +2112,7 @@ function listForViewSingleProject(proj){
 }
 
 function listForViewAllProjects(){
+  // Collect all tasks for current view
   const out = [];
   for(const pid of state.data.projectOrder){
     const proj = getProject(pid);
@@ -2110,6 +2120,26 @@ function listForViewAllProjects(){
     const arr = listForViewSingleProject(proj);
     for(const t of arr) out.push(t);
   }
+
+  // Get the global order for this view type
+  const orderKey = (state.view === "done") ? "done" : state.view;
+  const globalOrder = state.data.globalOrder[orderKey] || [];
+
+  // Sort tasks by their position in globalOrder
+  // Tasks not in globalOrder go to the end, maintaining their relative order
+  const orderMap = new Map();
+  globalOrder.forEach((key, idx) => orderMap.set(key, idx));
+
+  out.sort((a, b) => {
+    const keyA = taskKey(a);
+    const keyB = taskKey(b);
+    const posA = orderMap.has(keyA) ? orderMap.get(keyA) : Infinity;
+    const posB = orderMap.has(keyB) ? orderMap.get(keyB) : Infinity;
+    if(posA !== posB) return posA - posB;
+    // If both are not in order, maintain original relative order
+    return 0;
+  });
+
   return out;
 }
 
@@ -2383,41 +2413,95 @@ function renderDepMap(){
     levelGroups[lvl].push(t);
   }
 
-  // Layout nodes - max 4 per row, wrap within levels
-  const nodePositions = new Map();
-  const nodeWidth = 160;
-  const nodeHeight = 36;
-  const levelGap = 60;
-  const nodeGap = 16;
-  const rowGap = 12;
-  const padding = 24;
-  const maxPerRow = 4;
+  // Build parent/child lookup for barycenter calculation
+  const children = new Map(); // key -> [child keys]
+  const parents = new Map();  // key -> [parent keys]
+  for(const t of tasks){
+    const key = taskKey(t);
+    if(!children.has(key)) children.set(key, []);
+    if(!parents.has(key)) parents.set(key, []);
+    for(const depKey of (t.dependsOn || [])){
+      if(taskMap.has(depKey)){
+        parents.get(key).push(depKey);
+        if(!children.has(depKey)) children.set(depKey, []);
+        children.get(depKey).push(key);
+      }
+    }
+  }
 
-  const containerWidth = Math.min(maxPerRow * nodeWidth + (maxPerRow - 1) * nodeGap + padding * 2, 720);
+  // Layout parameters
+  const nodeWidth = 160;
+  const nodeHeight = 40;
+  const levelGap = 80;
+  const nodeGap = 24;
+  const padding = 32;
+
+  // Barycenter ordering: minimize edge crossings by ordering nodes based on connected nodes' positions
+  // Do multiple passes for better results
+  const nodeOrder = new Map(); // key -> x index within level
+
+  // Initialize order by original position
+  for(let lvl = 0; lvl <= maxLevel; lvl++){
+    levelGroups[lvl].forEach((t, i) => nodeOrder.set(taskKey(t), i));
+  }
+
+  // Barycenter iterations (sweep down then up)
+  for(let iter = 0; iter < 4; iter++){
+    // Sweep down: order based on parent positions
+    for(let lvl = 1; lvl <= maxLevel; lvl++){
+      const group = levelGroups[lvl];
+      const barycenters = group.map(t => {
+        const key = taskKey(t);
+        const parentKeys = parents.get(key) || [];
+        if(parentKeys.length === 0) return {task: t, bc: nodeOrder.get(key)};
+        const sum = parentKeys.reduce((s, pk) => s + (nodeOrder.get(pk) || 0), 0);
+        return {task: t, bc: sum / parentKeys.length};
+      });
+      barycenters.sort((a, b) => a.bc - b.bc);
+      levelGroups[lvl] = barycenters.map(b => b.task);
+      levelGroups[lvl].forEach((t, i) => nodeOrder.set(taskKey(t), i));
+    }
+    // Sweep up: order based on child positions
+    for(let lvl = maxLevel - 1; lvl >= 0; lvl--){
+      const group = levelGroups[lvl];
+      const barycenters = group.map(t => {
+        const key = taskKey(t);
+        const childKeys = children.get(key) || [];
+        if(childKeys.length === 0) return {task: t, bc: nodeOrder.get(key)};
+        const sum = childKeys.reduce((s, ck) => s + (nodeOrder.get(ck) || 0), 0);
+        return {task: t, bc: sum / childKeys.length};
+      });
+      barycenters.sort((a, b) => a.bc - b.bc);
+      levelGroups[lvl] = barycenters.map(b => b.task);
+      levelGroups[lvl].forEach((t, i) => nodeOrder.set(taskKey(t), i));
+    }
+  }
+
+  // Calculate container width based on widest level
+  const maxNodesInLevel = Math.max(...levelGroups.map(g => g.length));
+  const containerWidth = Math.max(
+    maxNodesInLevel * nodeWidth + (maxNodesInLevel - 1) * nodeGap + padding * 2,
+    400
+  );
+
+  // Position nodes
+  const nodePositions = new Map();
   let currentY = padding;
 
   for(let lvl = 0; lvl <= maxLevel; lvl++){
     const group = levelGroups[lvl];
-    const rows = [];
-    for(let i = 0; i < group.length; i += maxPerRow){
-      rows.push(group.slice(i, i + maxPerRow));
-    }
+    const rowWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
+    const startX = (containerWidth - rowWidth) / 2;
 
-    for(const row of rows){
-      const rowWidth = row.length * nodeWidth + (row.length - 1) * nodeGap;
-      const startX = (containerWidth - rowWidth) / 2;
-
-      for(let i = 0; i < row.length; i++){
-        const t = row[i];
-        const x = startX + i * (nodeWidth + nodeGap);
-        nodePositions.set(taskKey(t), {x, y: currentY, task: t});
-      }
-      currentY += nodeHeight + rowGap;
+    for(let i = 0; i < group.length; i++){
+      const t = group[i];
+      const x = startX + i * (nodeWidth + nodeGap);
+      nodePositions.set(taskKey(t), {x, y: currentY, task: t});
     }
-    currentY += levelGap - rowGap; // Add level gap after all rows in this level
+    currentY += nodeHeight + levelGap;
   }
 
-  const containerHeight = currentY + padding;
+  const containerHeight = currentY - levelGap + padding;
   depMapNodes.style.width = containerWidth + "px";
   depMapNodes.style.height = containerHeight + "px";
 
@@ -2451,9 +2535,21 @@ function renderDepMap(){
     depMapNodes.appendChild(node);
   }
 
-  // Draw arrows
+  // Draw bezier curves with arrowheads
   depMapSvg.setAttribute("width", containerWidth);
   depMapSvg.setAttribute("height", containerHeight);
+
+  // Add arrowhead marker definition
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  defs.innerHTML = `
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="var(--muted)" opacity="0.6"/>
+    </marker>
+    <marker id="arrowhead-highlight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="var(--accent)"/>
+    </marker>
+  `;
+  depMapSvg.appendChild(defs);
 
   for(const t of tasks){
     const toPos = nodePositions.get(taskKey(t));
@@ -2464,14 +2560,25 @@ function renderDepMap(){
       const fromPos = nodePositions.get(depKey);
       if(!fromPos) continue;
 
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", fromPos.x + nodeWidth / 2);
-      line.setAttribute("y1", fromPos.y + nodeHeight);
-      line.setAttribute("x2", toPos.x + nodeWidth / 2);
-      line.setAttribute("y2", toPos.y);
-      line.dataset.from = depKey;
-      line.dataset.to = taskKey(t);
-      depMapSvg.appendChild(line);
+      const x1 = fromPos.x + nodeWidth / 2;
+      const y1 = fromPos.y + nodeHeight;
+      const x2 = toPos.x + nodeWidth / 2;
+      const y2 = toPos.y;
+
+      // Create bezier curve
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      const midY = (y1 + y2) / 2;
+      const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+      path.setAttribute("d", d);
+      path.setAttribute("fill", "none");
+      path.setAttribute("stroke", "var(--muted)");
+      path.setAttribute("stroke-width", "2");
+      path.setAttribute("opacity", "0.5");
+      path.setAttribute("marker-end", "url(#arrowhead)");
+      path.dataset.from = depKey;
+      path.dataset.to = taskKey(t);
+      path.classList.add("depMapEdge");
+      depMapSvg.appendChild(path);
     }
   }
 }
@@ -2509,12 +2616,12 @@ function selectDepMapNode(task, nodePositions){
   const selectedNode = depMapNodes.querySelector(`[data-key="${taskKey(task)}"]`);
   if(selectedNode) selectedNode.classList.add("selected");
 
-  // Highlight lines
+  // Highlight edges (paths)
   const key = taskKey(task);
-  depMapSvg.querySelectorAll("line").forEach(line => {
-    line.classList.remove("highlight");
-    if(line.dataset.from === key || line.dataset.to === key){
-      line.classList.add("highlight");
+  depMapSvg.querySelectorAll(".depMapEdge").forEach(edge => {
+    edge.classList.remove("highlight");
+    if(edge.dataset.from === key || edge.dataset.to === key){
+      edge.classList.add("highlight");
     }
   });
 
@@ -2797,35 +2904,78 @@ function syncOrderFromDOMList(){
   if(!listKey) return;
 
   if(state.projectId === ALL_ID){
-    // For All Projects view, sync each project's order based on DOM position
-    const tasksByProject = new Map();
-    items.forEach((li, globalIdx) => {
+    // Update global order for this view (tasks stay in their original projects)
+    const orderKey = (state.view === "done") ? "done" : listKey;
+    const newOrder = [];
+    const tasksByProject = new Map(); // pid -> [tasks in DOM order]
+
+    for(const li of items){
       const id = li.dataset.id;
-      // Find which project this task belongs to
+      // Find the task to get its full key and project
       for(const pid of state.data.projectOrder){
         const proj = getProject(pid);
         if(!proj) continue;
         const task = proj[listKey].find(t => t.id === id);
         if(task){
+          newOrder.push(taskKey(task));
+          // Track task order within each project
           if(!tasksByProject.has(pid)) tasksByProject.set(pid, []);
-          tasksByProject.get(pid).push({task, globalIdx});
+          tasksByProject.get(pid).push(task);
           break;
         }
       }
-    });
-    // Update each project's list order
-    for(const [pid, tasksWithIdx] of tasksByProject){
+    }
+
+    // Update global order
+    state.data.globalOrder[orderKey] = newOrder;
+
+    // Also update each project's internal order to maintain continuity
+    for(const [pid, tasks] of tasksByProject){
       const proj = getProject(pid);
-      if(!proj) continue;
-      // Sort by global DOM index to preserve relative order
-      tasksWithIdx.sort((a,b) => a.globalIdx - b.globalIdx);
-      proj[listKey] = tasksWithIdx.map(t => t.task);
+      if(proj) proj[listKey] = tasks;
     }
   } else {
     const ids = items.map(li=>li.dataset.id);
     const proj = currentProject();
     const arr = proj[listKey];
-    proj[listKey] = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean);
+    const newList = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean);
+    proj[listKey] = newList;
+
+    // Also update global order to maintain continuity with All Projects view
+    const orderKey = (state.view === "done") ? "done" : listKey;
+    const globalOrder = state.data.globalOrder[orderKey] || [];
+    const pid = state.projectId;
+
+    // Get the new order of task keys for this project
+    const newProjectOrder = newList.map(t => taskKey(t));
+
+    // Rebuild global order: keep other projects' tasks in place,
+    // but update this project's tasks to match new relative order
+    const otherTasks = globalOrder.filter(key => !key.startsWith(pid + ":"));
+    const projectPositions = [];
+    globalOrder.forEach((key, idx) => {
+      if(key.startsWith(pid + ":")) projectPositions.push(idx);
+    });
+
+    // If this project has tasks in global order, update their positions
+    if(projectPositions.length > 0 && newProjectOrder.length > 0){
+      const newGlobalOrder = [...globalOrder];
+      // Replace old project task keys with new ordered ones at same positions
+      for(let i = 0; i < Math.min(projectPositions.length, newProjectOrder.length); i++){
+        newGlobalOrder[projectPositions[i]] = newProjectOrder[i];
+      }
+      // Handle case where project now has more tasks than before
+      if(newProjectOrder.length > projectPositions.length){
+        for(let i = projectPositions.length; i < newProjectOrder.length; i++){
+          newGlobalOrder.push(newProjectOrder[i]);
+        }
+      }
+      // Remove any old keys that no longer exist
+      state.data.globalOrder[orderKey] = newGlobalOrder.filter(key => {
+        if(!key.startsWith(pid + ":")) return true;
+        return newProjectOrder.includes(key);
+      });
+    }
   }
 
   queueSave();
@@ -3401,6 +3551,7 @@ function renderList(){
       renderItem(li, task, i, {showHandle:true, showNum:true});
       ul.appendChild(li);
     });
+    if(editing.id===null && (state.view==="active" || state.view==="paused")) enableDragList(ul);
     renderListFooter();
     return;
   }
