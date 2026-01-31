@@ -1580,6 +1580,26 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   </div>
 </div>
 
+<!-- Mobile Bottom Navigation -->
+<nav class="bottomNav" id="bottomNav">
+  <button class="bottomNavBtn" data-action="summary" title="Summary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <span>Summary</span>
+  </button>
+  <button class="bottomNavBtn" data-action="add" title="Add Task">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Add</span>
+  </button>
+  <button class="bottomNavBtn" data-action="focus" title="Focus Mode">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    <span>Focus</span>
+  </button>
+  <button class="bottomNavBtn" data-action="sync" title="Sync">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+    <span>Sync</span>
+  </button>
+</nav>
+
 <script>
 /* =========================================================
    HELPERS
@@ -5344,26 +5364,6 @@ qsa(".bottomNavBtn").forEach(btn => {
   };
 });
 </script>
-
-<!-- Mobile Bottom Navigation -->
-<nav class="bottomNav" id="bottomNav">
-  <button class="bottomNavBtn" data-action="summary" title="Summary">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    <span>Summary</span>
-  </button>
-  <button class="bottomNavBtn" data-action="add" title="Add Task">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    <span>Add</span>
-  </button>
-  <button class="bottomNavBtn" data-action="focus" title="Focus Mode">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-    <span>Focus</span>
-  </button>
-  <button class="bottomNavBtn" data-action="sync" title="Sync">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-    <span>Sync</span>
-  </button>
-</nav>
 
 </body>
 </html>
