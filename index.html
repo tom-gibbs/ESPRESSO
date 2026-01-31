@@ -5345,9 +5345,7 @@ qsa(".bottomNavBtn").forEach(btn => {
     const action = btn.dataset.action;
     switch(action){
       case "summary":
-        state.projectId = SUMMARY_ID;
-        state.view = "active";
-        renderAll();
+        setPage("summary");
         window.scrollTo({top:0,behavior:"smooth"});
         break;
       case "add":
