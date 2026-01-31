@@ -287,6 +287,20 @@ html[data-theme="light"] .projectNameBtn{ color: var(--text); }
   font-size:12px;color:var(--muted);font-weight:650;margin-left:8px;
 }
 .projectRow .right{display:flex;gap:8px;align-items:center}
+.projectRow.dragging{opacity:0.5;border-style:dashed}
+.projectRow .dragHandle{
+  cursor:grab;color:var(--muted);font-size:14px;padding:0 4px;
+  display:none;
+}
+.projectMenu.reordering .projectRow .dragHandle{display:block}
+.projectMenu.reordering .projectRow .right{display:none}
+.projectMenu.reordering .projectRow{cursor:grab}
+#reorderProjectsBtn{
+  padding:8px 12px;font-size:14px;min-width:36px;
+}
+#reorderProjectsBtn.active{
+  background:var(--accent);color:#000;border-color:var(--accent);
+}
 .iconBtn{
   width:34px;height:34px;padding:0;border-radius:999px;
   display:inline-flex;align-items:center;justify-content:center;
@@ -1114,6 +1128,7 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
           <div class="projectMenuTop">
             <input id="newProjectName" type="text" placeholder="Search or create project…" />
             <button id="addProjectBtn" class="primary" type="button" style="display:none">Add</button>
+            <button id="reorderProjectsBtn" class="subtle" type="button" title="Reorder projects">↕</button>
           </div>
           <div id="projectMenuList" class="projectMenuList"></div>
         </div>
@@ -1557,6 +1572,13 @@ function makeIconBtn(kind, onClick, {danger=false, title=""}={}){
 function closeProjectMenu(){
   projectMenu.classList.remove("on");
   projectMenu.setAttribute("aria-hidden","true");
+  // Reset reorder mode when closing
+  if(typeof projectReorderMode !== 'undefined' && projectReorderMode){
+    projectReorderMode = false;
+    $("reorderProjectsBtn").classList.remove("active");
+    $("reorderProjectsBtn").textContent = "↕";
+    projectMenu.classList.remove("reordering");
+  }
 }
 function openProjectMenu(){
   // Move to body and position below the button
@@ -1989,6 +2011,46 @@ $("addProjectBtn").onclick = ()=>{
   $("newProjectName").value="";
   closeProjectMenu();
 };
+
+let projectReorderMode = false;
+$("reorderProjectsBtn").onclick = ()=>{
+  projectReorderMode = !projectReorderMode;
+  $("reorderProjectsBtn").classList.toggle("active", projectReorderMode);
+  $("reorderProjectsBtn").textContent = projectReorderMode ? "Done" : "↕";
+  projectMenu.classList.toggle("reordering", projectReorderMode);
+  renderProjectMenu($("newProjectName").value);
+};
+
+function enableProjectMenuDrag(){
+  projectMenuList.ondragover = (e) => {
+    e.preventDefault();
+    const dragging = projectMenuList.querySelector(".projectRow.dragging");
+    if(!dragging) return;
+    const afterEl = getAfterProjectRow(projectMenuList, e.clientY);
+    afterEl ? projectMenuList.insertBefore(dragging, afterEl) : projectMenuList.appendChild(dragging);
+  };
+}
+
+function getAfterProjectRow(container, y){
+  const rows = [...container.querySelectorAll(".projectRow:not(.dragging):not(.allProjectsRow)")];
+  return rows.reduce((closest, el) => {
+    const box = el.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if(offset < 0 && offset > closest.offset) return {offset, el};
+    return closest;
+  }, {offset: -Infinity, el: null}).el;
+}
+
+function syncProjectMenuOrder(){
+  const rows = [...projectMenuList.querySelectorAll(".projectRow[data-pid]")];
+  const newOrder = rows.map(r => r.dataset.pid).filter(Boolean);
+  // Keep any projects not in the menu (shouldn't happen, but safe)
+  for(const pid of state.data.projectOrder){
+    if(!newOrder.includes(pid) && state.data.projects[pid]) newOrder.push(pid);
+  }
+  state.data.projectOrder = newOrder;
+  queueSave();
+}
 $("newProjectName").addEventListener("keydown",(e)=>{
   if(e.key==="Enter"){
     e.preventDefault();
@@ -2038,10 +2100,10 @@ function renderProjectMenu(filter = ""){
     return p.name.toLowerCase().includes(searchTerm);
   });
 
-  // Show ALL PROJECTS option (if matches filter or no filter)
-  if(!searchTerm || "all projects".includes(searchTerm)){
+  // Show ALL PROJECTS option (if matches filter or no filter) - not in reorder mode
+  if((!searchTerm || "all projects".includes(searchTerm)) && !projectReorderMode){
     const allRow = document.createElement("div");
-    allRow.className = "projectRow";
+    allRow.className = "projectRow allProjectsRow";
     const allBtn = document.createElement("button");
     allBtn.className = "projectNameBtn";
     allBtn.type="button";
@@ -2063,12 +2125,19 @@ function renderProjectMenu(filter = ""){
 
     const row = document.createElement("div");
     row.className = "projectRow";
+    row.dataset.pid = pid;
+
+    // Drag handle (shown only in reorder mode via CSS)
+    const handle = document.createElement("span");
+    handle.className = "dragHandle";
+    handle.textContent = "≡";
 
     const btn = document.createElement("button");
     btn.className = "projectNameBtn";
     btn.type="button";
     btn.innerHTML = `${escapeHtml(p.name)}${state.projectId===pid ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
     btn.onclick = ()=>{
+      if(projectReorderMode) return; // Don't switch projects in reorder mode
       state.projectId = pid;
       $("newProjectName").value = "";
       closeProjectMenu();
@@ -2081,9 +2150,24 @@ function renderProjectMenu(filter = ""){
     right.appendChild(makeIconBtn("pencil", ()=>renameProject(pid), {title:"Rename"}));
     right.appendChild(makeIconBtn("trash", ()=>deleteProject(pid), {danger:true, title:"Delete"}));
 
+    // Drag events (only active in reorder mode)
+    if(projectReorderMode){
+      row.draggable = true;
+      row.addEventListener("dragstart", () => row.classList.add("dragging"));
+      row.addEventListener("dragend", () => {
+        row.classList.remove("dragging");
+        syncProjectMenuOrder();
+      });
+    }
+
+    row.appendChild(handle);
     row.appendChild(btn);
     row.appendChild(right);
     projectMenuList.appendChild(row);
+  }
+
+  if(projectReorderMode){
+    enableProjectMenuDrag();
   }
 
   // Show "no matches" message if filtering returned nothing
