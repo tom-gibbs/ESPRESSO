@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 
 <style>
 /* =========================================================
@@ -727,6 +729,86 @@ html[data-theme="light"] .focusMark{ box-shadow:none; opacity:.55; }
 html[data-theme="light"] .focusTitle{ color: var(--text); font-weight:750; }
 .focusMeta{margin-top:4px;color:rgba(238,240,244,.62);font-size:13px}
 html[data-theme="light"] .focusMeta{ color: var(--muted); }
+
+/* =========================================================
+   SYNC UI
+   ========================================================= */
+.syncBtn{
+  position:relative;
+  width:40px;height:40px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:var(--text);cursor:pointer;
+}
+html[data-theme="light"] .syncBtn{background:rgba(255,255,255,.86)}
+.syncBtn svg{width:18px;height:18px;display:block}
+.syncBtn.synced{border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.12);color:#22c55e}
+html[data-theme="light"] .syncBtn.synced{background:rgba(34,197,94,.15);color:#16a34a}
+.syncBtn.pending{border-color:rgba(234,179,8,.4);background:rgba(234,179,8,.12);color:#eab308}
+html[data-theme="light"] .syncBtn.pending{background:rgba(234,179,8,.15);color:#ca8a04}
+.syncBtn.notbackedup{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:#ef4444}
+html[data-theme="light"] .syncBtn.notbackedup{background:rgba(239,68,68,.1);color:#dc2626}
+.syncBtn.syncing svg{animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.syncOverlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(10px);
+  display:none;z-index:10001;
+}
+html[data-theme="light"] .syncOverlay{background:rgba(15,23,42,.55)}
+.syncOverlay.on{display:block}
+.syncInner{height:100%;display:flex;align-items:center;justify-content:center;padding:22px}
+.syncBox{
+  width:min(440px,96vw);
+  background:linear-gradient(180deg,rgba(17,19,25,.92),rgba(17,19,25,.82));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:22px;
+  box-shadow:0 40px 140px rgba(0,0,0,.65);
+  padding:24px;
+  text-align:center;
+}
+html[data-theme="light"] .syncBox{
+  background:rgba(255,255,255,.94);
+  border:1px solid var(--line);
+  box-shadow:0 30px 120px rgba(15,23,42,.18);
+}
+.syncBox h3{margin:0 0 8px;font-size:20px;font-weight:800}
+.syncBox p{margin:0 0 20px;color:var(--muted);font-size:14px}
+.syncUserInfo{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border-radius:14px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--line);
+  margin-bottom:16px;
+}
+html[data-theme="light"] .syncUserInfo{background:rgba(255,255,255,.92)}
+.syncAvatar{width:44px;height:44px;border-radius:999px;border:2px solid var(--line)}
+.syncUserText{text-align:left;flex:1}
+.syncUserName{font-weight:700;font-size:15px}
+.syncUserEmail{font-size:12px;color:var(--muted)}
+.syncStatus{
+  font-size:13px;color:var(--muted);
+  padding:12px;border-radius:12px;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--line);
+  margin-bottom:16px;
+}
+html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
+.syncStatus.success{color:#22c55e;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.syncStatus.error{color:#ef4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.googleBtn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:12px 24px;border-radius:999px;
+  background:#fff;border:1px solid #dadce0;
+  color:#3c4043;font-size:14px;font-weight:600;
+  cursor:pointer;transition:box-shadow .15s ease;
+}
+.googleBtn:hover{box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.googleBtn svg{width:20px;height:20px}
+.syncActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 </style>
 </head>
 
@@ -753,6 +835,11 @@ html[data-theme="light"] .focusMeta{ color: var(--muted); }
       </div>
 
       <div class="actionsTop">
+        <button id="syncBtn" class="syncBtn" type="button" title="Sync settings">
+          <svg id="syncIconCloudOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M10 14l4-4m0 4l-4-4"/></svg>
+          <svg id="syncIconCloudPending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
+          <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
+        </button>
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode">▤</button>
         <button id="themeToggle" class="subtle iconTopBtn" type="button">☀︎ / ☾</button>
         <button id="forceSaveBtn" class="accent iconTopBtn" type="button" title="Force save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
@@ -878,6 +965,43 @@ html[data-theme="light"] .focusMeta{ color: var(--muted); }
       <div class="focusBtns">
         <div class="spacer"></div>
         <button class="primary" id="focusClose" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="syncOverlay" id="syncOverlay" aria-hidden="true">
+  <div class="syncInner">
+    <div class="syncBox" role="dialog" aria-modal="true" aria-label="Sync settings">
+      <h3>Google Drive Sync</h3>
+      <p id="syncDescription">Sign in to sync your tasks across devices</p>
+
+      <div id="syncUserInfo" class="syncUserInfo" style="display:none">
+        <img id="syncAvatar" class="syncAvatar" src="" alt="">
+        <div class="syncUserText">
+          <div id="syncUserName" class="syncUserName"></div>
+          <div id="syncUserEmail" class="syncUserEmail"></div>
+        </div>
+      </div>
+
+      <div id="syncStatusBox" class="syncStatus" style="display:none"></div>
+
+      <div id="syncSignedOut">
+        <button id="googleSignInBtn" class="googleBtn" type="button">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Sign in with Google
+        </button>
+      </div>
+
+      <div id="syncSignedIn" style="display:none">
+        <div class="syncActions">
+          <button id="syncNowBtn" class="primary" type="button">Sync Now</button>
+          <button id="signOutBtn" class="subtle" type="button">Sign Out</button>
+        </div>
+      </div>
+
+      <div class="syncActions" style="margin-top:20px">
+        <button id="closeSyncBtn" class="subtle" type="button">Close</button>
       </div>
     </div>
   </div>
@@ -3169,7 +3293,9 @@ $("resetBtn").onclick = ()=>{
 
 $("forceSaveBtn").onclick = async ()=>{
   try{
-    setStatus("Force saving…");
+    setStatus("Saving…");
+
+    // 1. Always save locally first
     await saveNow({silent:true, force:true});
 
     const g = await fetchWithTimeout(API_URL,{method:"GET",cache:"no-store"}, 5000);
@@ -3183,11 +3309,25 @@ $("forceSaveBtn").onclick = async ()=>{
 
     try{ localStorage.setItem(FALLBACK_KEY, JSON.stringify(state.data)); }catch{}
 
-    setStatus("Force saved");
+    // 2. Push to Google Drive if signed in
+    if(googleUser && gapiInited){
+      setStatus("Syncing to Drive…");
+      try {
+        await pushToDrive();
+        setStatus("Saved & synced to Drive");
+      } catch(e){
+        console.error("Drive sync error:", e);
+        setStatus("Saved locally (Drive sync failed)");
+        markPendingSync();
+      }
+    } else {
+      setStatus("Saved locally");
+    }
+
     renderAll();
   }catch(e){
     console.error(e);
-    setStatus("FORCE SAVE FAILED");
+    setStatus("SAVE FAILED");
   }
 };
 
@@ -3208,7 +3348,391 @@ $("forceSaveBtn").onclick = async ()=>{
   setPage("list");
   renderAll();
   updateHeaderTimer();
+
+  // Initialize Google Sync
+  initGoogleSync();
 })();
+
+/* =========================================================
+   GOOGLE DRIVE SYNC
+   ========================================================= */
+const GOOGLE_CLIENT_ID = '146120049361-nki2hqoh9ddn9i64g5hv4tbgeaq8p90p.apps.googleusercontent.com';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const DRIVE_FILE_NAME = 'espresso-state.json';
+
+let googleUser = null;
+let tokenClient = null;
+let gapiInited = false;
+let gisInited = false;
+
+const syncOverlay = $("syncOverlay");
+
+function openSyncModal(){
+  syncOverlay.classList.add("on");
+  document.body.style.overflow = "hidden";
+  updateSyncUI();
+}
+function closeSyncModal(){
+  syncOverlay.classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("syncBtn").onclick = openSyncModal;
+$("closeSyncBtn").onclick = closeSyncModal;
+syncOverlay.addEventListener("click", (e) => { if(e.target === syncOverlay) closeSyncModal(); });
+
+function updateSyncUI(){
+  const signedIn = !!googleUser;
+  $("syncSignedOut").style.display = signedIn ? "none" : "";
+  $("syncSignedIn").style.display = signedIn ? "" : "none";
+  $("syncUserInfo").style.display = signedIn ? "flex" : "none";
+
+  let description = "Sign in to back up your tasks";
+  if(signedIn){
+    if(pendingSync){
+      description = "Changes pending sync (will retry when online)";
+    } else {
+      description = "Your tasks are backed up to Google Drive";
+    }
+  }
+  $("syncDescription").textContent = description;
+
+  if(signedIn){
+    $("syncAvatar").src = googleUser.picture || "";
+    $("syncUserName").textContent = googleUser.name || "Google User";
+    $("syncUserEmail").textContent = googleUser.email || "";
+  }
+
+  // Update sync button state and icon
+  const synced = signedIn && !pendingSync;
+  const pending = signedIn && pendingSync;
+  const notBackedUp = !signedIn;
+
+  $("syncBtn").classList.toggle("synced", synced);
+  $("syncBtn").classList.toggle("pending", pending);
+  $("syncBtn").classList.toggle("notbackedup", notBackedUp);
+
+  // Show appropriate icon
+  $("syncIconCloudOff").style.display = notBackedUp ? "" : "none";
+  $("syncIconCloudPending").style.display = pending ? "" : "none";
+  $("syncIconCloudCheck").style.display = synced ? "" : "none";
+}
+
+function setSyncStatus(msg, type=""){
+  const box = $("syncStatusBox");
+  box.textContent = msg;
+  box.className = "syncStatus" + (type ? " " + type : "");
+  box.style.display = msg ? "" : "none";
+}
+
+async function initGoogleSync(){
+  if(GOOGLE_CLIENT_ID === 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com'){
+    console.log("Google Sync: No client ID configured");
+    return;
+  }
+
+  // Load saved user info
+  try {
+    const saved = localStorage.getItem("espresso_google_user");
+    if(saved) googleUser = JSON.parse(saved);
+  } catch(e){}
+
+  // Wait for scripts to load (up to 5 seconds)
+  for(let i = 0; i < 10; i++){
+    if(typeof gapi !== "undefined" && typeof google !== "undefined" && google.accounts) break;
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // Initialize GAPI
+  if(typeof gapi !== "undefined" && !gapiInited){
+    gapi.load("client", async () => {
+      try {
+        await gapi.client.init({});
+        await gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
+        gapiInited = true;
+        maybeEnableSync();
+      } catch(e){ console.error("GAPI init error:", e); }
+    });
+  }
+
+  // Initialize Google Identity Services
+  if(typeof google !== "undefined" && google.accounts && !gisInited){
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_SCOPES,
+      callback: handleTokenResponse,
+    });
+    gisInited = true;
+    maybeEnableSync();
+  }
+
+  updateSyncUI();
+}
+
+function maybeEnableSync(){
+  if(gapiInited && gisInited && googleUser){
+    // Try to silently get a token
+    tokenClient.requestAccessToken({ prompt: "" });
+  }
+}
+
+function handleTokenResponse(resp){
+  if(resp.error){
+    console.log("Token error:", resp.error);
+    if(resp.error === "interaction_required" || resp.error === "consent_required"){
+      // Need user interaction - will happen on explicit sign in
+    } else {
+      setSyncStatus("Sign in failed: " + resp.error, "error");
+    }
+    return;
+  }
+  // Set the token on gapi client
+  gapi.client.setToken({ access_token: resp.access_token });
+  // Token received, now fetch user info
+  setSyncStatus("Signing in...", "");
+  fetchUserInfo(resp.access_token);
+}
+
+async function fetchUserInfo(accessToken){
+  try {
+    const token = accessToken || gapi.client.getToken()?.access_token;
+    if(!token){
+      setSyncStatus("No access token available", "error");
+      return;
+    }
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if(resp.ok){
+      googleUser = await resp.json();
+      try { localStorage.setItem("espresso_google_user", JSON.stringify(googleUser)); } catch(e){}
+      updateSyncUI();
+      setSyncStatus("Connected! Syncing...", "success");
+      // Auto-sync on sign in
+      try {
+        await pullFromDrive();
+        setSyncStatus("Signed in as " + (googleUser.name || googleUser.email), "success");
+      } catch(e){
+        setSyncStatus("Signed in, but sync failed: " + e.message, "error");
+      }
+    } else {
+      const errText = await resp.text();
+      console.error("User info response:", resp.status, errText);
+      setSyncStatus("Failed to get user info: " + resp.status, "error");
+    }
+  } catch(e){
+    console.error("User info error:", e);
+    setSyncStatus("Sign in error: " + e.message, "error");
+  }
+}
+
+$("googleSignInBtn").onclick = async () => {
+  if(!gisInited){
+    setSyncStatus("Loading Google API...", "");
+    // Wait for Google API to load (retry for up to 5 seconds)
+    for(let i = 0; i < 10; i++){
+      await new Promise(r => setTimeout(r, 500));
+      if(typeof google !== "undefined" && google.accounts && gapiInited){
+        initGoogleSync();
+        break;
+      }
+    }
+    if(!gisInited){
+      setSyncStatus("Google API failed to load. Check your internet connection.", "error");
+      return;
+    }
+  }
+  tokenClient.requestAccessToken({ prompt: "consent" });
+};
+
+$("signOutBtn").onclick = () => {
+  const token = gapi.client.getToken();
+  if(token){
+    google.accounts.oauth2.revoke(token.access_token);
+    gapi.client.setToken(null);
+  }
+  googleUser = null;
+  try { localStorage.removeItem("espresso_google_user"); } catch(e){}
+  updateSyncUI();
+  setSyncStatus("Signed out", "");
+};
+
+$("syncNowBtn").onclick = async () => {
+  setSyncStatus("Syncing...", "");
+  $("syncBtn").classList.add("syncing");
+  try {
+    await pushToDrive();
+    setSyncStatus("Synced successfully!", "success");
+  } catch(e){
+    setSyncStatus("Sync failed: " + e.message, "error");
+  }
+  $("syncBtn").classList.remove("syncing");
+};
+
+// Google Drive functions
+async function findDriveFile(){
+  try {
+    const resp = await gapi.client.drive.files.list({
+      q: `name='${DRIVE_FILE_NAME}' and trashed=false`,
+      spaces: "drive",
+      fields: "files(id, name, modifiedTime)"
+    });
+    const files = resp.result.files || [];
+    return files[0] || null;
+  } catch(e){
+    console.error("Find file error:", e);
+    return null;
+  }
+}
+
+async function readDriveFile(fileId){
+  try {
+    const resp = await gapi.client.drive.files.get({
+      fileId: fileId,
+      alt: "media"
+    });
+    return resp.result;
+  } catch(e){
+    console.error("Read file error:", e);
+    return null;
+  }
+}
+
+async function writeDriveFile(fileId, data){
+  const boundary = "espresso_boundary";
+  const metadata = { name: DRIVE_FILE_NAME, mimeType: "application/json" };
+
+  const body = fileId
+    ? JSON.stringify(data)
+    : [
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        JSON.stringify(metadata),
+        `--${boundary}`,
+        "Content-Type: application/json",
+        "",
+        JSON.stringify(data),
+        `--${boundary}--`
+      ].join("\r\n");
+
+  const url = fileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`
+    : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+
+  const resp = await fetch(url, {
+    method: fileId ? "PATCH" : "POST",
+    headers: {
+      Authorization: `Bearer ${gapi.client.getToken().access_token}`,
+      "Content-Type": fileId ? "application/json" : `multipart/related; boundary=${boundary}`
+    },
+    body: body
+  });
+
+  if(!resp.ok) throw new Error("Failed to save to Drive");
+  return await resp.json();
+}
+
+async function pullFromDrive(){
+  if(!googleUser || !gapiInited) return;
+
+  try {
+    const file = await findDriveFile();
+    if(file){
+      const data = await readDriveFile(file.id);
+      if(data){
+        // Merge: use remote if it has higher rev
+        const remoteRev = data.meta?.rev || 0;
+        const localRev = state.data.meta?.rev || 0;
+        if(remoteRev >= localRev){
+          state.data = fixState(data);
+          state.data.meta.owner = CLIENT_ID;
+          ensureCurrentProject();
+          rolloverDoneBuckets();
+          enforceDependenciesAllProjects();
+          renderAll();
+          setStatus("Synced from Drive");
+        }
+      }
+    }
+  } catch(e){
+    console.error("Pull error:", e);
+  }
+}
+
+async function pushToDrive(){
+  if(!googleUser || !gapiInited) return;
+
+  const file = await findDriveFile();
+  const payload = {
+    meta: state.data.meta,
+    projects: state.data.projects,
+    projectOrder: state.data.projectOrder,
+    projects_order: state.data.projectOrder
+  };
+  await writeDriveFile(file?.id || null, payload);
+}
+
+// Pending sync tracking
+let pendingSync = false;
+const PENDING_SYNC_KEY = "espresso_pending_sync";
+
+function markPendingSync(){
+  pendingSync = true;
+  try { localStorage.setItem(PENDING_SYNC_KEY, "1"); } catch(e){}
+  updateSyncUI();
+}
+
+function clearPendingSync(){
+  pendingSync = false;
+  try { localStorage.removeItem(PENDING_SYNC_KEY); } catch(e){}
+  updateSyncUI();
+}
+
+function checkPendingSync(){
+  try {
+    pendingSync = localStorage.getItem(PENDING_SYNC_KEY) === "1";
+  } catch(e){}
+}
+
+// Sync when coming back online
+window.addEventListener("online", async () => {
+  if(googleUser && gapiInited && pendingSync){
+    setStatus("Back online, syncing…");
+    try {
+      await pushToDrive();
+      clearPendingSync();
+      setStatus("Synced to Drive");
+    } catch(e){
+      console.error("Online sync failed:", e);
+    }
+  }
+});
+
+// Hook into save to also push to Drive
+const originalQueueSave = queueSave;
+queueSave = function(){
+  originalQueueSave();
+  // Debounced push to Drive
+  clearTimeout(window._driveSaveTimer);
+  window._driveSaveTimer = setTimeout(async () => {
+    if(googleUser && gapiInited){
+      if(navigator.onLine){
+        try {
+          await pushToDrive();
+          clearPendingSync();
+        } catch(e){
+          console.error("Drive push error:", e);
+          markPendingSync();
+        }
+      } else {
+        markPendingSync();
+      }
+    }
+  }, 2000);
+};
+
+// Check for pending sync on load
+checkPendingSync();
 </script>
 
 </body>
