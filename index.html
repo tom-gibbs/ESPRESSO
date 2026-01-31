@@ -749,7 +749,8 @@ html[data-theme="light"] .depMapBox{
 .depMapContainer{
   position:relative;
   flex:1;
-  min-height:300px;
+  min-height:200px;
+  max-height:60vh;
   overflow:auto;
   border:1px solid var(--line);
   border-radius:var(--r-md);
@@ -759,12 +760,11 @@ html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
 .depMapSvg{
   position:absolute;
   top:0;left:0;
-  width:100%;height:100%;
   pointer-events:none;
 }
 .depMapSvg line{stroke:var(--muted);stroke-width:2;opacity:0.5}
 .depMapSvg line.highlight{stroke:var(--accent);stroke-width:2.5;opacity:1}
-.depMapNodes{position:relative;padding:20px}
+.depMapNodes{position:relative}
 .depMapNode{
   position:absolute;
   padding:8px 14px;
@@ -1541,10 +1541,12 @@ function closeProjectMenu(){
   projectMenu.setAttribute("aria-hidden","true");
 }
 function openProjectMenu(){
-  // Position dropdown below the button using fixed positioning
+  // Move to body and position below the button
+  document.body.appendChild(projectMenu);
   const btn = $("sectionHeaderBtn");
   const rect = btn.getBoundingClientRect();
-  projectMenu.style.cssText = `top: ${rect.bottom + 8}px; left: ${rect.left}px;`;
+  projectMenu.style.top = (rect.bottom + 8) + "px";
+  projectMenu.style.left = rect.left + "px";
 
   projectMenu.classList.add("on");
   projectMenu.setAttribute("aria-hidden","false");
@@ -2381,39 +2383,43 @@ function renderDepMap(){
     levelGroups[lvl].push(t);
   }
 
-  // Layout nodes
+  // Layout nodes - max 4 per row, wrap within levels
   const nodePositions = new Map();
   const nodeWidth = 160;
   const nodeHeight = 36;
-  const levelGap = 80;
-  const nodeGap = 20;
-  const padding = 30;
+  const levelGap = 60;
+  const nodeGap = 16;
+  const rowGap = 12;
+  const padding = 24;
+  const maxPerRow = 4;
 
-  let containerWidth = 0;
-  let containerHeight = padding;
-
-  for(let lvl = 0; lvl <= maxLevel; lvl++){
-    const group = levelGroups[lvl];
-    const groupWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
-    containerWidth = Math.max(containerWidth, groupWidth + padding * 2);
-  }
+  const containerWidth = Math.min(maxPerRow * nodeWidth + (maxPerRow - 1) * nodeGap + padding * 2, 720);
+  let currentY = padding;
 
   for(let lvl = 0; lvl <= maxLevel; lvl++){
     const group = levelGroups[lvl];
-    const groupWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
-    const startX = (containerWidth - groupWidth) / 2;
-    const y = padding + lvl * (nodeHeight + levelGap);
-
-    for(let i = 0; i < group.length; i++){
-      const t = group[i];
-      const x = startX + i * (nodeWidth + nodeGap);
-      nodePositions.set(taskKey(t), {x, y, task: t});
+    const rows = [];
+    for(let i = 0; i < group.length; i += maxPerRow){
+      rows.push(group.slice(i, i + maxPerRow));
     }
-    containerHeight = y + nodeHeight + padding;
+
+    for(const row of rows){
+      const rowWidth = row.length * nodeWidth + (row.length - 1) * nodeGap;
+      const startX = (containerWidth - rowWidth) / 2;
+
+      for(let i = 0; i < row.length; i++){
+        const t = row[i];
+        const x = startX + i * (nodeWidth + nodeGap);
+        nodePositions.set(taskKey(t), {x, y: currentY, task: t});
+      }
+      currentY += nodeHeight + rowGap;
+    }
+    currentY += levelGap - rowGap; // Add level gap after all rows in this level
   }
 
-  depMapContainer.style.minWidth = containerWidth + "px";
-  depMapContainer.style.minHeight = containerHeight + "px";
+  const containerHeight = currentY + padding;
+  depMapNodes.style.width = containerWidth + "px";
+  depMapNodes.style.height = containerHeight + "px";
 
   // Create node elements
   for(const t of tasks){
