@@ -1242,10 +1242,9 @@ $("unlinkIconSlot").innerHTML = ICONS.unlink;
 $("focusNotesIconSlot").innerHTML = ICONS.pencil;
 
 /* =========================================================
-   API + STORAGE
+   LOCAL STORAGE
    ========================================================= */
-const API_URL = "/api/state";
-const FALLBACK_KEY = "espresso_state_fallback_projects_v1";
+const STATE_KEY = "espresso_state_v1";
 const TIMER_KEY = "espresso_timer_v3";
 
 /* stable per-tab client id */
@@ -1680,67 +1679,40 @@ async function saveNow({silent=false, force=false}={}){
   rolloverDoneBuckets();
   enforceDependenciesAllProjects();
 
+  // Increment revision
+  state.data.meta.rev = (state.data.meta.rev || 0) + 1;
+
   const payload = makePayload();
-  localStorage.setItem(FALLBACK_KEY, payload);
 
-  const url = force ? `${API_URL}?force=1` : API_URL;
-
-  let res;
-  try{
-    res = await fetchWithTimeout(url,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: payload,
-      cache:"no-store",
-      keepalive:true
-    }, 5000);
-  }catch(e){
-    setStatus(`SAVE FAILED (network): ${e?.name || "error"}`);
+  try {
+    localStorage.setItem(STATE_KEY, payload);
+  } catch(e) {
+    setStatus("SAVE FAILED (storage full?)");
     throw e;
   }
 
-  if(!res.ok){
-    const msg = await res.json().catch(()=>({error:"Save failed"}));
-    setStatus(`SAVE FAILED (${res.status}): ${msg.error || "Save failed"}`);
-    throw new Error(msg.error || "Save failed");
-  }
-
- const out = await res.json().catch(()=>null);
-  
-  // FIX: Update local rev from server response to stay in sync
-  if(out && typeof out.rev === "number"){
-    state.data.meta.rev = out.rev;
-  }
-  
-  const ts = out?.saved_at_unix;
-  lastSavedUnix = ts || lastSavedUnix || Math.floor(Date.now()/1000);
-
-  if(!force) setSavedStatusFromLast();
+  lastSavedUnix = Math.floor(Date.now()/1000);
+  if(!silent) setSavedStatusFromLast();
   return true;
 }
 
 async function loadAll(){
-  try{
-    const res = await fetchWithTimeout(API_URL, {method:"GET", cache:"no-store"}, 5000);
-    if(!res.ok) throw new Error("Bad response");
-    const payload = await res.json();
+  // Try to load from localStorage
+  let raw = localStorage.getItem(STATE_KEY);
 
-    state.data = fixState(payload);
-    state.data.meta.owner = CLIENT_ID;
-
-    ensureCurrentProject();
-    rolloverDoneBuckets();
-    enforceDependenciesAllProjects();
-
-    localStorage.setItem(FALLBACK_KEY, JSON.stringify(state.data));
-    setStatus("Loaded");
-    hasLoaded = true;
-    return;
-  }catch(e){
-    setStatus(`Server not reachable (${e?.name || "error"}). Falling back…`);
+  // Migrate from old fallback key if needed
+  if(!raw){
+    const oldKey = "espresso_state_fallback_projects_v1";
+    raw = localStorage.getItem(oldKey);
+    if(raw){
+      try {
+        localStorage.setItem(STATE_KEY, raw);
+        localStorage.removeItem(oldKey);
+        console.log("Migrated data from old storage key");
+      } catch(e){}
+    }
   }
 
-  const raw = localStorage.getItem(FALLBACK_KEY);
   if(raw){
     try{
       const payload = JSON.parse(raw);
@@ -1751,12 +1723,15 @@ async function loadAll(){
       rolloverDoneBuckets();
       enforceDependenciesAllProjects();
 
-      setStatus("Loaded locally");
+      setStatus("Loaded");
       hasLoaded = true;
       return;
-    }catch{}
+    }catch(e){
+      console.error("Failed to parse saved state:", e);
+    }
   }
 
+  // No saved state - create fresh
   state.data = fixState({meta:{rev:0,owner:CLIENT_ID,owner_updated_unix:0},projects:{},projectOrder:[]});
   ensureCurrentProject();
   rolloverDoneBuckets();
@@ -3731,33 +3706,23 @@ $("forceSaveBtn").onclick = async ()=>{
   try{
     setStatus("Saving…");
 
-    // 1. Always save locally first
+    // Save to localStorage
     await saveNow({silent:true, force:true});
 
-    const g = await fetchWithTimeout(API_URL,{method:"GET",cache:"no-store"}, 5000);
-    const server = await g.json();
-    state.data = fixState(server);
-    state.data.meta.owner = CLIENT_ID;
-
-    ensureCurrentProject();
-    rolloverDoneBuckets();
-    enforceDependenciesAllProjects();
-
-    try{ localStorage.setItem(FALLBACK_KEY, JSON.stringify(state.data)); }catch{}
-
-    // 2. Push to Google Drive if signed in
+    // Push to Google Drive if signed in
     if(googleUser && gapiInited){
       setStatus("Syncing to Drive…");
       try {
         await pushToDrive();
         setStatus("Saved & synced to Drive");
+        clearPendingSync();
       } catch(e){
         console.error("Drive sync error:", e);
         setStatus("Saved locally (Drive sync failed)");
         markPendingSync();
       }
     } else {
-      setStatus("Saved locally");
+      setStatus("Saved");
     }
 
     renderAll();
@@ -4096,6 +4061,8 @@ async function pullFromDrive(){
           ensureCurrentProject();
           rolloverDoneBuckets();
           enforceDependenciesAllProjects();
+          // Save to localStorage
+          try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
           renderAll();
           setStatus("Synced from Drive");
         }
