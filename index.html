@@ -220,6 +220,8 @@ html[data-theme="light"] .sectionHeaderBtn{ background: rgba(255,255,255,.92); }
 
 .projectMenu{
   position:fixed;
+  top:0;
+  left:0;
   z-index:9998;
   display:none;
   width:min(520px, 92vw);
@@ -1416,9 +1418,7 @@ function openProjectMenu(){
   // Position dropdown below the button using fixed positioning
   const btn = $("sectionHeaderBtn");
   const rect = btn.getBoundingClientRect();
-  projectMenu.style.top = (rect.bottom + 8) + "px";
-  projectMenu.style.left = rect.left + "px";
-  projectMenu.style.right = "auto";
+  projectMenu.style.cssText = `top: ${rect.bottom + 8}px; left: ${rect.left}px;`;
 
   projectMenu.classList.add("on");
   projectMenu.setAttribute("aria-hidden","false");
