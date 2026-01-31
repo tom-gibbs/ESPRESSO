@@ -735,6 +735,7 @@ html[data-theme="light"] .depMapBox{
   width:32px;height:32px;border-radius:999px;
   border:1px solid var(--line);background:transparent;
   color:var(--muted);cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;
 }
 .depMapClose:hover{background:rgba(255,255,255,.08);color:var(--text)}
 .depMapLegend{
@@ -2401,14 +2402,40 @@ function renderDepMap(){
     return;
   }
 
+  // Filter to only show tasks with dependencies (upstream or downstream)
+  const tasksWithDeps = new Set();
+  for(const t of tasks){
+    const key = taskKey(t);
+    // Check if task has upstream dependencies
+    if(t.dependsOn && t.dependsOn.length > 0){
+      for(const depKey of t.dependsOn){
+        if(taskMap.has(depKey)){
+          tasksWithDeps.add(key);
+          tasksWithDeps.add(depKey);
+        }
+      }
+    }
+  }
+
+  // Replace tasks array with only those that have dependencies
+  const filteredTasks = tasks.filter(t => tasksWithDeps.has(taskKey(t)));
+
+  if(filteredTasks.length === 0){
+    depMapNodes.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No dependencies to visualise</div>';
+    return;
+  }
+
+  // Use filtered tasks from here on
+  const tasksToRender = filteredTasks;
+
   // Build dependency levels (topological sort)
-  const levels = assignLevels(tasks, taskMap);
+  const levels = assignLevels(tasksToRender, taskMap);
   const maxLevel = Math.max(...Array.from(levels.values()), 0);
 
   // Group tasks by level
   const levelGroups = [];
   for(let i = 0; i <= maxLevel; i++) levelGroups.push([]);
-  for(const t of tasks){
+  for(const t of tasksToRender){
     const lvl = levels.get(taskKey(t)) || 0;
     levelGroups[lvl].push(t);
   }
@@ -2416,7 +2443,7 @@ function renderDepMap(){
   // Build parent/child lookup for barycenter calculation
   const children = new Map(); // key -> [child keys]
   const parents = new Map();  // key -> [parent keys]
-  for(const t of tasks){
+  for(const t of tasksToRender){
     const key = taskKey(t);
     if(!children.has(key)) children.set(key, []);
     if(!parents.has(key)) parents.set(key, []);
@@ -2506,7 +2533,7 @@ function renderDepMap(){
   depMapNodes.style.height = containerHeight + "px";
 
   // Create node elements
-  for(const t of tasks){
+  for(const t of tasksToRender){
     const pos = nodePositions.get(taskKey(t));
     if(!pos) continue;
 
@@ -2551,7 +2578,7 @@ function renderDepMap(){
   `;
   depMapSvg.appendChild(defs);
 
-  for(const t of tasks){
+  for(const t of tasksToRender){
     const toPos = nodePositions.get(taskKey(t));
     if(!toPos) continue;
 
