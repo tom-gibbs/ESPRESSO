@@ -4504,22 +4504,29 @@ $("closeSyncBtn").onclick = closeSyncModal;
 syncOverlay.addEventListener("click", (e) => { if(e.target === syncOverlay) closeSyncModal(); });
 
 function updateSyncUI(){
-  const signedIn = !!googleUser;
+  const signedIn = !!googleUser && !needsReconnect;
+  const hasUser = !!googleUser;
   $("syncSignedOut").style.display = signedIn ? "none" : "";
   $("syncSignedIn").style.display = signedIn ? "" : "none";
-  $("syncUserInfo").style.display = signedIn ? "flex" : "none";
+  $("syncUserInfo").style.display = hasUser ? "flex" : "none";
 
   let description = "Sign in to back up your tasks";
-  if(signedIn){
+  if(needsReconnect && hasUser){
+    description = "Session expired - click to reconnect";
+    $("googleSignInBtn").textContent = "Reconnect";
+  } else if(signedIn){
     if(pendingSync){
       description = "Changes pending sync (will retry when online)";
     } else {
       description = "Your tasks are backed up to Google Drive";
     }
+    $("googleSignInBtn").textContent = "Sign in with Google";
+  } else {
+    $("googleSignInBtn").textContent = "Sign in with Google";
   }
   $("syncDescription").textContent = description;
 
-  if(signedIn){
+  if(hasUser){
     $("syncAvatar").src = googleUser.picture || "";
     $("syncUserName").textContent = googleUser.name || "Google User";
     $("syncUserEmail").textContent = googleUser.email || "";
@@ -4527,8 +4534,8 @@ function updateSyncUI(){
 
   // Update sync button state and icon
   const synced = signedIn && !pendingSync;
-  const pending = signedIn && pendingSync;
-  const notBackedUp = !signedIn;
+  const pending = signedIn && pendingSync || needsReconnect;
+  const notBackedUp = !hasUser;
 
   $("syncBtn").classList.toggle("synced", synced);
   $("syncBtn").classList.toggle("pending", pending);
@@ -4593,16 +4600,25 @@ async function initGoogleSync(){
 
 function maybeEnableSync(){
   if(gapiInited && gisInited && googleUser){
-    // Try to silently get a token
-    tokenClient.requestAccessToken({ prompt: "" });
+    // Try to silently get a token using saved email as hint
+    tokenClient.requestAccessToken({
+      prompt: "",
+      hint: googleUser.email || ""
+    });
   }
 }
+
+let needsReconnect = false;
 
 function handleTokenResponse(resp){
   if(resp.error){
     console.log("Token error:", resp.error);
     if(resp.error === "interaction_required" || resp.error === "consent_required"){
-      // Need user interaction - will happen on explicit sign in
+      // Need user interaction - mark as needing reconnect if we have saved user
+      if(googleUser){
+        needsReconnect = true;
+        updateSyncUI();
+      }
     } else {
       setSyncStatus("Sign in failed: " + resp.error, "error");
     }
@@ -4610,6 +4626,7 @@ function handleTokenResponse(resp){
   }
   // Set the token on gapi client
   gapi.client.setToken({ access_token: resp.access_token });
+  needsReconnect = false;
   // Token received, now fetch user info
   setSyncStatus("Signing in...", "");
   fetchUserInfo(resp.access_token);
@@ -4664,7 +4681,12 @@ $("googleSignInBtn").onclick = async () => {
       return;
     }
   }
-  tokenClient.requestAccessToken({ prompt: "consent" });
+  // Use saved email as hint for faster reconnection
+  const options = { prompt: "consent" };
+  if(googleUser?.email){
+    options.hint = googleUser.email;
+  }
+  tokenClient.requestAccessToken(options);
 };
 
 $("signOutBtn").onclick = () => {
