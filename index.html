@@ -1218,7 +1218,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .spacer{display:none}
 
   /* Hide buttons that are in bottom nav or not needed on mobile */
-  #syncBtn,#focusBtn,#compactToggle,.depMapBtn{display:none}
+  #syncBtn,#refreshDriveBtn,#focusBtn,#compactToggle,.depMapBtn{display:none}
 
   /* Force compact mode on mobile */
   .metaRow{display:none}
@@ -1443,6 +1443,9 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <svg id="syncIconCloudOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M10 14l4-4m0 4l-4-4"/></svg>
           <svg id="syncIconCloudPending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
           <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
+        </button>
+        <button id="refreshDriveBtn" class="subtle iconTopBtn" type="button" title="Refresh Google Drive connection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         </button>
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode">▤</button>
         <button id="themeToggle" class="subtle iconTopBtn" type="button">☀︎ / ☾</button>
@@ -5223,6 +5226,41 @@ $("syncNowBtn").onclick = async () => {
   }
   $("syncBtn").classList.remove("syncing");
   btn.disabled = false;
+};
+
+// Refresh Google Drive connection
+$("refreshDriveBtn").onclick = () => {
+  if(!tokenClient){
+    setStatus("Google API not ready");
+    return;
+  }
+  const btn = $("refreshDriveBtn");
+  btn.disabled = true;
+  btn.querySelector("svg").style.animation = "spin 1s linear infinite";
+
+  setStatus("Refreshing connection...");
+
+  const options = { prompt: "" }; // Empty prompt for silent refresh
+  if(googleUser?.email){
+    options.hint = googleUser.email;
+  }
+
+  // Store callback to re-enable button
+  const origCallback = tokenClient.callback;
+  tokenClient.callback = (resp) => {
+    btn.disabled = false;
+    btn.querySelector("svg").style.animation = "";
+    if(resp.error){
+      setStatus("Refresh failed - try signing in again");
+    } else {
+      setStatus("Connection refreshed");
+      updateSyncUI();
+    }
+    tokenClient.callback = origCallback;
+    if(origCallback) origCallback(resp);
+  };
+
+  tokenClient.requestAccessToken(options);
 };
 
 // Google Drive functions
