@@ -5440,6 +5440,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/* Click backdrop to close overlays */
+$("focusOverlay").addEventListener("click", (e) => {
+  if(e.target === $("focusOverlay") || e.target.classList.contains("focusInner")){
+    closeFocus();
+  }
+});
+$("linkOverlay").addEventListener("click", (e) => {
+  if(e.target === $("linkOverlay") || e.target.classList.contains("modalInner")){
+    closeLinkModal();
+  }
+});
+$("depMapOverlay").addEventListener("click", (e) => {
+  if(e.target === $("depMapOverlay") || e.target.classList.contains("modalInner")){
+    closeDepMap();
+  }
+});
+$("syncOverlay").addEventListener("click", (e) => {
+  if(e.target === $("syncOverlay") || e.target.classList.contains("syncInner")){
+    closeSyncModal();
+  }
+});
+
 /* Bottom Navigation handlers */
 qsa(".bottomNavBtn").forEach(btn => {
   btn.onclick = () => {
