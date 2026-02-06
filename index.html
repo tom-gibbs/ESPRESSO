@@ -4759,8 +4759,11 @@ function updateTabCounts(){
   });
 }
 
+let lastInlineProjectSelection = null;
+
 function renderInlineProjectSelect(){
   const sel = $("inlineProjectSelect");
+  const currentSelection = sel.value; // Preserve current selection
   sel.innerHTML = "";
   for(const pid of state.data.projectOrder){
     const p = getProject(pid);
@@ -4768,12 +4771,23 @@ function renderInlineProjectSelect(){
     const opt = document.createElement("option");
     opt.value = pid;
     opt.textContent = p.name;
-    if(pid === state.projectId || (state.projectId === ALL_ID && pid === state.data.projectOrder[0])){
+    // Use last selection, current selection, or fall back to first project
+    const targetPid = lastInlineProjectSelection || currentSelection || state.data.projectOrder[0];
+    if(pid === state.projectId && state.projectId !== ALL_ID){
+      opt.selected = true;
+    } else if((state.projectId === ALL_ID || state.page === "summary") && pid === targetPid){
       opt.selected = true;
     }
     sel.appendChild(opt);
   }
+  // Update lastInlineProjectSelection to current value
+  lastInlineProjectSelection = sel.value;
 }
+
+// Update lastInlineProjectSelection when user manually changes dropdown
+$("inlineProjectSelect").addEventListener("change", (e) => {
+  lastInlineProjectSelection = e.target.value;
+});
 
 function renderAll(){
   ensureCurrentProject();
