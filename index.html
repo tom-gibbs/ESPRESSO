@@ -1739,6 +1739,18 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <div class="shortcutSection">
           <h4>Navigation</h4>
           <div class="shortcutItem">
+            <span class="shortcutDesc">Toggle last project</span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Previous project</span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>↑</kbd></span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Next project</span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>↓</kbd></span>
+          </div>
+          <div class="shortcutItem">
             <span class="shortcutDesc">Switch projects</span>
             <span class="shortcutKey">Click project name dropdown</span>
           </div>
@@ -2595,6 +2607,71 @@ document.addEventListener("visibilitychange", ()=>{
 
 <script>
 /* =========================================================
+   PROJECT NAVIGATION + SHORTCUTS
+   ========================================================= */
+let previousProjectId = null;
+
+function switchToProject(pid){
+  if(pid === state.projectId) return;
+  previousProjectId = state.projectId;
+  state.projectId = pid;
+  saveViewState();
+  renderAll();
+}
+
+function toggleLastProject(){
+  if(!previousProjectId) return;
+  // Check if previous project still exists
+  if(previousProjectId !== ALL_ID && !getProject(previousProjectId)) return;
+  switchToProject(previousProjectId);
+}
+
+function navigateProject(direction){
+  // Build the full project list including ALL_ID
+  const projectList = [ALL_ID, ...state.data.projectOrder];
+  const currentIdx = projectList.indexOf(state.projectId);
+  if(currentIdx === -1) return;
+
+  let newIdx = currentIdx + direction;
+  // Wrap around
+  if(newIdx < 0) newIdx = projectList.length - 1;
+  if(newIdx >= projectList.length) newIdx = 0;
+
+  switchToProject(projectList[newIdx]);
+}
+
+// Global keyboard shortcuts
+document.addEventListener("keydown", (e) => {
+  // Skip if user is typing in an input
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
+
+  // Ctrl+Space: toggle last project (works even when typing)
+  if(e.ctrlKey && e.code === "Space"){
+    e.preventDefault();
+    toggleLastProject();
+    return;
+  }
+
+  // Skip navigation shortcuts if typing
+  if(isTyping) return;
+
+  // Ctrl+Up: previous project
+  if(e.ctrlKey && e.key === "ArrowUp"){
+    e.preventDefault();
+    navigateProject(-1);
+    return;
+  }
+
+  // Ctrl+Down: next project
+  if(e.ctrlKey && e.key === "ArrowDown"){
+    e.preventDefault();
+    navigateProject(1);
+    return;
+  }
+});
+
+/* =========================================================
    PROJECT CRUD + MENU
    ========================================================= */
 function addProject(name){
@@ -2751,11 +2828,9 @@ function renderProjectMenu(filter = ""){
     allBtn.type="button";
     allBtn.innerHTML = `ALL PROJECTS${state.projectId===ALL_ID ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
     const selectAllProjects = ()=>{
-      state.projectId = ALL_ID;
       $("newProjectName").value = "";
       closeProjectMenu();
-      saveViewState();
-      renderAll();
+      switchToProject(ALL_ID);
     };
     allBtn.onclick = selectAllProjects;
     allRow.onclick = (e) => {
@@ -2782,11 +2857,9 @@ function renderProjectMenu(filter = ""){
 
     const selectProject = ()=>{
       if(projectReorderMode) return; // Don't switch projects in reorder mode
-      state.projectId = pid;
       $("newProjectName").value = "";
       closeProjectMenu();
-      saveViewState();
-      renderAll();
+      switchToProject(pid);
     };
 
     const btn = document.createElement("button");
