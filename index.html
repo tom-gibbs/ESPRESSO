@@ -1631,6 +1631,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <div class="doneToggle" id="doneToggle">
             <button class="doneBtn active" data-done="today" type="button">Today</button>
             <button class="doneBtn" data-done="week" type="button">This week</button>
+            <button class="doneBtn" data-done="all" type="button">All</button>
           </div>
         </div>
 
@@ -2127,6 +2128,7 @@ function defaultProject(name){
     paused: [],
     done_today: [],
     done_week: [],
+    done_history: [],
     meta_done: { day_start_ms: startOfDayLocal(), week_start_ms: startOfWeekMondayLocal() }
   };
 }
@@ -2161,7 +2163,7 @@ function parseTaskKey(k){
 const state = {
   projectId: null,
   view: "active",        // active | paused | done
-  doneFilter: "today",   // today | week
+  doneFilter: "today",   // today | week | all
   page: "list",          // list | summary
   data: {
     meta: { rev: 0, owner: CLIENT_ID, owner_updated_unix: 0 },
@@ -2280,17 +2282,20 @@ function fixProject(p){
   const doneOld = Array.isArray(p.done) ? p.done : [];
   const done_today = Array.isArray(p.done_today) ? p.done_today : [];
   const done_week  = Array.isArray(p.done_week) ? p.done_week : [];
+  const done_history = Array.isArray(p.done_history) ? p.done_history : [];
   const active = Array.isArray(p.active) ? p.active : [];
   const paused = Array.isArray(p.paused) ? p.paused : [];
 
-  const out = { id, name, active: [], paused: [], done_today: [], done_week: [], meta_done };
+  const out = { id, name, active: [], paused: [], done_today: [], done_week: [], done_history: [], meta_done };
 
   if(doneOld.length && !done_today.length && !done_week.length){
     out.done_today = doneOld.slice();
     out.done_week  = doneOld.slice();
+    out.done_history = doneOld.slice(); // Also migrate to history
   }else{
     out.done_today = done_today;
     out.done_week  = done_week;
+    out.done_history = done_history;
   }
 
   out.active = active;
@@ -2306,6 +2311,7 @@ out.active = normArr(out.active);
 out.paused = normArr(out.paused);
 out.done_today = normArr(out.done_today);
 out.done_week  = normArr(out.done_week);
+out.done_history = normArr(out.done_history);
 
 
   const ensureKeyDeps = (t)=>{
@@ -2314,7 +2320,7 @@ out.done_week  = normArr(out.done_week);
       return (String(k).includes(":")) ? String(k) : `${id}:${String(k)}`;
     });
   };
-  [...out.active, ...out.paused, ...out.done_today, ...out.done_week].forEach(ensureKeyDeps);
+  [...out.active, ...out.paused, ...out.done_today, ...out.done_week, ...out.done_history].forEach(ensureKeyDeps);
 
   return out;
 }
@@ -2918,7 +2924,7 @@ function renderProjectMenu(filter = ""){
 function stopEditing(){ editing.id=null; editing.kind=null; editing.draft=""; }
 
 function allTasks(proj){
-  return [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week];
+  return [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week, ...proj.done_history];
 }
 
 function allTasksIndexAllProjects(){
@@ -2936,7 +2942,9 @@ function listForViewSingleProject(proj){
   if(state.view==="active") return proj.active;
   if(state.view==="paused") return proj.paused;
   if(state.view==="done"){
-    return (state.doneFilter==="today") ? proj.done_today : proj.done_week;
+    if(state.doneFilter === "today") return proj.done_today;
+    if(state.doneFilter === "week") return proj.done_week;
+    if(state.doneFilter === "all") return proj.done_history;
   }
   return proj.active;
 }
@@ -4060,7 +4068,7 @@ function syncTimerWithEstimate(task){
    TASK HELPERS
    ========================================================= */
 function findTaskInProject(proj, id){
-  const keys = ["active","paused","done_today","done_week"];
+  const keys = ["active","paused","done_today","done_week","done_history"];
   for(const k of keys){
     const idx = proj[k].findIndex(x=>x.id===id);
     if(idx!==-1) return { listKey:k, idx };
@@ -4082,7 +4090,7 @@ function deleteTask(task){
   }
 
   // FIX: Remove from ALL lists, not just the first found
-  for(const listKey of ["active", "paused", "done_today", "done_week"]){
+  for(const listKey of ["active", "paused", "done_today", "done_week", "done_history"]){
     proj[listKey] = proj[listKey].filter(x => x.id !== task.id);
   }
 
@@ -4213,12 +4221,16 @@ function markDone(task){
   for(const listKey of ["active", "paused", "done_today", "done_week"]){
     proj[listKey] = proj[listKey].filter(x => x.id !== task.id);
   }
-  
+  // Also remove from history if somehow already there (edge case)
+  proj.done_history = proj.done_history.filter(x => x.id !== task.id);
+
   task.doneAt = Date.now();
 
   // Add to done buckets (these are separate copies for display purposes)
   proj.done_today.push({...task});
   proj.done_week.push({...task});
+  // Add to permanent history (prepend for reverse chronological order)
+  proj.done_history.unshift({...task});
 
   enforceDependenciesAllProjects();
   stopEditing();
@@ -4231,6 +4243,7 @@ function restoreFromDone(task){
 
   proj.done_today = proj.done_today.filter(x=>x.id!==task.id);
   proj.done_week  = proj.done_week.filter(x=>x.id!==task.id);
+  proj.done_history = proj.done_history.filter(x=>x.id!==task.id);
 
   task.doneAt = null;
   task.pausedReason = "";
@@ -4248,12 +4261,14 @@ function clearDoneCurrent(){
       const proj = getProject(pid);
       if(!proj) continue;
       if(state.doneFilter === "today") proj.done_today = [];
-      else proj.done_week = [];
+      else if(state.doneFilter === "week") proj.done_week = [];
+      else if(state.doneFilter === "all") proj.done_history = [];
     }
   } else {
     const proj = currentProject();
     if(state.doneFilter === "today") proj.done_today = [];
-    else proj.done_week = [];
+    else if(state.doneFilter === "week") proj.done_week = [];
+    else if(state.doneFilter === "all") proj.done_history = [];
   }
   queueSave();
   renderAll();
@@ -4609,10 +4624,15 @@ function renderList(){
     if(items.length === 0){
       const empty = document.createElement("div");
       empty.className = "emptyState";
+      const doneHints = {
+        today: "No tasks completed today",
+        week: "No tasks completed this week",
+        all: "No task history yet"
+      };
       const messages = {
         active: { icon: "☕", text: "No active tasks", hint: "All projects are clear" },
         paused: { icon: "⏸", text: "No paused tasks", hint: "No paused tasks across projects" },
-        done: { icon: "✓", text: "No completed tasks", hint: state.doneFilter === "today" ? "No tasks completed today" : "No tasks completed this week" }
+        done: { icon: "✓", text: "No completed tasks", hint: doneHints[state.doneFilter] || doneHints.today }
       };
       const msg = messages[state.view] || messages.active;
       empty.innerHTML = `<div class="emptyIcon">${msg.icon}</div><div class="emptyText">${msg.text}</div><div class="emptyHint">${msg.hint}</div>`;
@@ -4680,10 +4700,15 @@ function renderList(){
   if(items.length === 0){
     const empty = document.createElement("div");
     empty.className = "emptyState";
+    const doneHintsLocal = {
+      today: "Tasks you complete today will appear here",
+      week: "Tasks you complete this week will appear here",
+      all: "Your completed task history will appear here"
+    };
     const messages = {
       active: { icon: "☕", text: "No active tasks", hint: "Add a task above to get started" },
       paused: { icon: "⏸", text: "No paused tasks", hint: "Tasks you pause will appear here" },
-      done: { icon: "✓", text: "No completed tasks", hint: state.doneFilter === "today" ? "Tasks you complete today will appear here" : "Tasks you complete this week will appear here" }
+      done: { icon: "✓", text: "No completed tasks", hint: doneHintsLocal[state.doneFilter] || doneHintsLocal.today }
     };
     const msg = messages[state.view] || messages.active;
     empty.innerHTML = `<div class="emptyIcon">${msg.icon}</div><div class="emptyText">${msg.text}</div><div class="emptyHint">${msg.hint}</div>`;
@@ -4710,7 +4735,8 @@ function sectionCounts(proj){
     active: proj.active.length,
     paused: proj.paused.length,
     doneToday: proj.done_today.length,
-    doneWeek: proj.done_week.length
+    doneWeek: proj.done_week.length,
+    doneAll: proj.done_history.length
   };
 }
 function currentTaskHTMLForProject(proj){
@@ -4769,6 +4795,7 @@ function renderSummaryPage(){
       <div class="summaryRow"><span>Paused</span><span class="kpi">${c.paused}</span></div>
       <div class="summaryRow"><span>Done (today)</span><span class="kpi">${c.doneToday}</span></div>
       <div class="summaryRow"><span>Done (week)</span><span class="kpi">${c.doneWeek}</span></div>
+      <div class="summaryRow"><span>Done (all)</span><span class="kpi">${c.doneAll}</span></div>
     `;
 
     tile.appendChild(h);
@@ -5343,12 +5370,18 @@ $("focusTimerReset").onclick = ()=>{
    ========================================================= */
 function updateTabCounts(){
   // Update tab labels with counts
+  const getDoneCount = (p) => {
+    if(state.doneFilter === "today") return p.done_today.length;
+    if(state.doneFilter === "week") return p.done_week.length;
+    if(state.doneFilter === "all") return p.done_history.length;
+    return p.done_today.length;
+  };
   const getCount = (view) => {
     if(state.projectId === ALL_ID){
       return Object.values(state.data.projects).reduce((sum, p) => {
         if(view === "active") return sum + p.active.length;
         if(view === "paused") return sum + p.paused.length;
-        if(view === "done") return sum + (state.doneFilter === "today" ? p.done_today.length : p.done_week.length);
+        if(view === "done") return sum + getDoneCount(p);
         return sum;
       }, 0);
     }
@@ -5356,7 +5389,7 @@ function updateTabCounts(){
     if(!proj) return 0;
     if(view === "active") return proj.active.length;
     if(view === "paused") return proj.paused.length;
-    if(view === "done") return state.doneFilter === "today" ? proj.done_today.length : proj.done_week.length;
+    if(view === "done") return getDoneCount(proj);
     return 0;
   };
 
@@ -5507,20 +5540,28 @@ $("newText").addEventListener("keydown",(e)=>{
 
 $("clearDoneBtn").onclick = ()=>{
   let totalCount = 0;
+  const getListForFilter = (proj) => {
+    if(state.doneFilter === "today") return proj.done_today;
+    if(state.doneFilter === "week") return proj.done_week;
+    if(state.doneFilter === "all") return proj.done_history;
+    return proj.done_today;
+  };
   if(state.projectId === ALL_ID){
     for(const pid of state.data.projectOrder){
       const proj = getProject(pid);
       if(!proj) continue;
-      totalCount += (state.doneFilter==="today") ? proj.done_today.length : proj.done_week.length;
+      totalCount += getListForFilter(proj).length;
     }
   } else {
     const proj = currentProject();
-    totalCount = (state.doneFilter==="today") ? proj.done_today.length : proj.done_week.length;
+    totalCount = getListForFilter(proj).length;
   }
   if(totalCount===0) return;
-  const period = state.doneFilter==="today" ? "today" : "this week";
+  const periodLabels = { today: "today", week: "this week", all: "all time" };
+  const period = periodLabels[state.doneFilter] || "today";
   const scope = state.projectId === ALL_ID ? " from all projects" : "";
-  if(confirm(`Clear ${totalCount} completed task${totalCount===1?"":"s"} from ${period}${scope}?\n\nThis cannot be undone.`)){
+  const warning = state.doneFilter === "all" ? "\n\n⚠️ This will permanently delete your entire task history!" : "";
+  if(confirm(`Clear ${totalCount} completed task${totalCount===1?"":"s"} from ${period}${scope}?${warning}\n\nThis cannot be undone.`)){
     clearDoneCurrent();
   }
 };
