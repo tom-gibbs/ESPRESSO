@@ -653,6 +653,133 @@ html[data-theme="light"] .groupHeader{background: rgba(255,255,255,.92);color: r
 }
 html[data-theme="light"] .listFooter{ color: rgba(107,114,128,.85); }
 
+/* Page bottom spacer with info button */
+.pageBottomSpacer{
+  margin-top: 40px;
+  padding: 20px 0 40px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--line);
+}
+.infoBtn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.infoBtn:hover{
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+}
+html[data-theme="light"] .infoBtn:hover{ background: rgba(0,0,0,.04); }
+.infoBtn svg{
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+/* Shortcuts overlay */
+.shortcutsBox{
+  width: min(560px, 92vw);
+  max-height: calc(100vh - 80px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.shortcutsHeader{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.shortcutsCloseBtn{
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shortcutsCloseBtn:hover{ background: rgba(255,255,255,.08); color: var(--text); }
+html[data-theme="light"] .shortcutsCloseBtn:hover{ background: rgba(0,0,0,.05); }
+.shortcutsContent{
+  padding: 16px 24px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.shortcutSection{
+  margin-bottom: 24px;
+}
+.shortcutSection:last-child{ margin-bottom: 0; }
+.shortcutSection h4{
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.shortcutItem{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  gap: 16px;
+}
+.shortcutDesc{
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+}
+.shortcutKey{
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+.shortcutKey code{
+  background: rgba(215,176,122,.15);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 600;
+}
+.shortcutKey kbd{
+  display: inline-block;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-family: inherit;
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+html[data-theme="light"] .shortcutKey kbd{
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+
 /* Empty state */
 .emptyState{
   text-align:center;
@@ -1512,9 +1639,148 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <ul class="list" id="list"></ul>
         <div id="listFooter" class="listFooter"></div>
 
+        <div class="pageBottomSpacer">
+          <button class="infoBtn" id="shortcutsBtn" type="button" title="Keyboard shortcuts & tips">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Shortcuts & Tips</span>
+          </button>
+        </div>
+
       </div>
     </div>
 
+  </div>
+</div>
+
+<div class="modalOverlay" id="shortcutsOverlay" aria-hidden="true">
+  <div class="modalInner">
+    <div class="shortcutsBox" role="dialog" aria-modal="true" aria-label="Shortcuts & Tips">
+      <div class="shortcutsHeader">
+        <h3 class="modalTitle">Shortcuts & Tips</h3>
+        <button id="shortcutsClose" class="shortcutsCloseBtn" type="button">✕</button>
+      </div>
+      <div class="shortcutsContent" id="shortcutsContent">
+        <div class="shortcutSection">
+          <h4>Task Creation</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Add task at specific position</span>
+            <span class="shortcutKey">Type <code>(n)</code> at end of task</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Example: "Buy milk (1)" places task first</span>
+            <span class="shortcutKey"></span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Task List</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Open focus mode for a task</span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + Click task text</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Reorder task position</span>
+            <span class="shortcutKey">Click the task number</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Drag to reorder</span>
+            <span class="shortcutKey">Drag the ≡ handle</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Set task color</span>
+            <span class="shortcutKey">Click the color dot</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Edit task text</span>
+            <span class="shortcutKey">Click the task text</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Edit time estimate</span>
+            <span class="shortcutKey">Click the time chip</span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Focus Mode</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Open focus mode</span>
+            <span class="shortcutKey">Click the coffee cup icon</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Edit task position</span>
+            <span class="shortcutKey">Click "Item X of Y"</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Edit title / estimate</span>
+            <span class="shortcutKey">Click the text</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Start/pause timer</span>
+            <span class="shortcutKey">Click the timer pill</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Close focus mode</span>
+            <span class="shortcutKey">Click backdrop or X</span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Dependencies</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Link tasks / Move to project</span>
+            <span class="shortcutKey">Click the link icon</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">View dependency map</span>
+            <span class="shortcutKey">Click the graph icon</span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Navigation</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Switch projects</span>
+            <span class="shortcutKey">Click project name dropdown</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">View all projects summary</span>
+            <span class="shortcutKey">Select "All Projects"</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Reorder projects</span>
+            <span class="shortcutKey">Drag tiles on Summary page</span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Sync</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Open sync settings</span>
+            <span class="shortcutKey">Click the cloud icon</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Refresh connection</span>
+            <span class="shortcutKey">Click the refresh icon</span>
+          </div>
+        </div>
+
+        <div class="shortcutSection">
+          <h4>Mobile Gestures</h4>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Quick actions on task</span>
+            <span class="shortcutKey">Swipe left/right</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Switch tabs</span>
+            <span class="shortcutKey">Swipe on tab area</span>
+          </div>
+          <div class="shortcutItem">
+            <span class="shortcutDesc">Refresh list</span>
+            <span class="shortcutKey">Pull down from top</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5309,6 +5575,23 @@ function closeSyncModal(){
 $("syncBtn").onclick = openSyncModal;
 $("closeSyncBtn").onclick = closeSyncModal;
 syncOverlay.addEventListener("click", (e) => { if(e.target === syncOverlay) closeSyncModal(); });
+
+/* =========================================================
+   SHORTCUTS OVERLAY
+   ========================================================= */
+const shortcutsOverlay = $("shortcutsOverlay");
+
+function openShortcuts(){
+  shortcutsOverlay.classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+function closeShortcuts(){
+  shortcutsOverlay.classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("shortcutsBtn").onclick = openShortcuts;
+$("shortcutsClose").onclick = closeShortcuts;
+shortcutsOverlay.addEventListener("click", (e) => { if(e.target === shortcutsOverlay) closeShortcuts(); });
 
 function updateSyncUI(){
   const signedIn = !!googleUser && !needsReconnect;
