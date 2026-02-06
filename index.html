@@ -2296,6 +2296,20 @@ function fixProject(p){
     out.done_today = done_today;
     out.done_week  = done_week;
     out.done_history = done_history;
+
+    // Migrate existing done_today and done_week tasks into done_history if history is empty
+    if(out.done_history.length === 0 && (out.done_today.length > 0 || out.done_week.length > 0)){
+      // Combine and dedupe by task id, preferring done_week (has more tasks typically)
+      const historyMap = new Map();
+      for(const t of out.done_week) historyMap.set(t.id, t);
+      for(const t of out.done_today) historyMap.set(t.id, t);
+      // Sort by doneAt descending (newest first)
+      out.done_history = Array.from(historyMap.values()).sort((a, b) => {
+        const aTime = a.doneAt || a.createdAt || 0;
+        const bTime = b.doneAt || b.createdAt || 0;
+        return bTime - aTime;
+      });
+    }
   }
 
   out.active = active;
