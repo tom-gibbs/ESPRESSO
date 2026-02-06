@@ -1666,15 +1666,15 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <h4>Keyboard Shortcuts</h4>
           <div class="shortcutItem">
             <span class="shortcutDesc">Toggle between last two projects</span>
-            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Space</kbd></span>
+            <span class="shortcutKey"><kbd>⌘/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Space</kbd></span>
           </div>
           <div class="shortcutItem">
             <span class="shortcutDesc">Previous / Next project</span>
-            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></span>
+            <span class="shortcutKey"><kbd>⌘/Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></span>
           </div>
           <div class="shortcutItem">
             <span class="shortcutDesc">Open focus mode for a task</span>
-            <span class="shortcutKey"><kbd>Ctrl</kbd> + Click task</span>
+            <span class="shortcutKey"><kbd>⌘/Ctrl</kbd> + Click task</span>
           </div>
           <div class="shortcutItem">
             <span class="shortcutDesc">Close any overlay</span>
@@ -2595,8 +2595,11 @@ document.addEventListener("keydown", (e) => {
   const active = document.activeElement;
   const isTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
 
-  // Ctrl+Shift+Space: toggle last project (works even when typing)
-  if(e.ctrlKey && e.shiftKey && e.code === "Space"){
+  // Use Ctrl on Windows/Linux, Cmd on Mac (metaKey)
+  const modKey = e.ctrlKey || e.metaKey;
+
+  // Ctrl/Cmd+Shift+Space: toggle last project (works even when typing)
+  if(modKey && e.shiftKey && e.code === "Space"){
     e.preventDefault();
     toggleLastProject();
     return;
@@ -2605,15 +2608,15 @@ document.addEventListener("keydown", (e) => {
   // Skip navigation shortcuts if typing
   if(isTyping) return;
 
-  // Ctrl+Shift+Up: previous project
-  if(e.ctrlKey && e.shiftKey && e.key === "ArrowUp"){
+  // Ctrl/Cmd+Shift+Up: previous project
+  if(modKey && e.shiftKey && e.key === "ArrowUp"){
     e.preventDefault();
     navigateProject(-1);
     return;
   }
 
-  // Ctrl+Shift+Down: next project
-  if(e.ctrlKey && e.shiftKey && e.key === "ArrowDown"){
+  // Ctrl/Cmd+Shift+Down: next project
+  if(modKey && e.shiftKey && e.key === "ArrowDown"){
     e.preventDefault();
     navigateProject(1);
     return;
@@ -4389,7 +4392,7 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
       }
       editing.id=task.id; editing.kind="text"; editing.draft=task.text; renderAll();
     };
-    span.title = "Click to edit, Ctrl+click to focus";
+    span.title = "Click to edit, Ctrl/Cmd+click to focus";
     textRow.appendChild(span);
 
     if(isPriority){
