@@ -548,6 +548,17 @@ html[data-theme="light"] .handle{border:1px dashed rgba(107,114,128,.35);color:r
   margin-top:6px;font-size:13px;
 }
 html[data-theme="light"] .num{color:rgba(107,114,128,.85)}
+.numInput{
+  width:32px;padding:2px 4px;
+  font-size:13px;text-align:center;
+  background:var(--surface);
+  border:1px solid var(--accent);
+  border-radius:4px;
+  color:inherit;
+  font-variant-numeric:tabular-nums;
+  outline:none;
+}
+.numInput:focus{box-shadow:0 0 0 2px rgba(215,176,122,.25)}
 .mainCol{flex:1;min-width:240px}
 .textRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .textDisplay{font-size:15px;padding:2px 0;cursor:text;color:rgba(255,255,255,.92);font-weight:600;}
@@ -3560,6 +3571,86 @@ function syncOrderFromDOMList(){
   renderAll();
 }
 
+// Move a task to a specific position (1-indexed)
+function moveTaskToPosition(task, newPos){
+  const listKey = (state.view === "active") ? "active"
+               : (state.view === "paused") ? "paused"
+               : null;
+  if(!listKey) return;
+
+  if(state.projectId === ALL_ID){
+    // Global view - reorder in global order
+    const orderKey = listKey;
+    const globalOrder = state.data.globalOrder[orderKey] || [];
+    const key = taskKey(task);
+    const currentIdx = globalOrder.indexOf(key);
+    if(currentIdx === -1) return;
+
+    // Remove from current position
+    globalOrder.splice(currentIdx, 1);
+
+    // Insert at new position (clamp to valid range)
+    const targetIdx = Math.min(Math.max(0, newPos - 1), globalOrder.length);
+    globalOrder.splice(targetIdx, 0, key);
+
+    state.data.globalOrder[orderKey] = globalOrder;
+
+    // Also update project's internal list to stay in sync
+    const proj = getProject(task.projectId);
+    if(proj){
+      const projList = proj[listKey];
+      const projIdx = projList.findIndex(t => t.id === task.id);
+      if(projIdx !== -1){
+        // Find where task should go in project list based on global order
+        const projectKeys = globalOrder.filter(k => k.startsWith(task.projectId + ":"));
+        const newProjIdx = projectKeys.indexOf(key);
+        if(newProjIdx !== -1 && newProjIdx !== projIdx){
+          projList.splice(projIdx, 1);
+          projList.splice(Math.min(newProjIdx, projList.length), 0, task);
+        }
+      }
+    }
+  } else {
+    // Project-specific view - reorder in project list
+    const proj = getProject(state.projectId);
+    if(!proj) return;
+
+    const list = proj[listKey];
+    const currentIdx = list.findIndex(t => t.id === task.id);
+    if(currentIdx === -1) return;
+
+    // Remove from current position
+    list.splice(currentIdx, 1);
+
+    // Insert at new position (clamp to valid range)
+    const targetIdx = Math.min(Math.max(0, newPos - 1), list.length);
+    list.splice(targetIdx, 0, task);
+
+    // Update global order to maintain sync
+    const orderKey = listKey;
+    const globalOrder = state.data.globalOrder[orderKey] || [];
+    const key = taskKey(task);
+    const pid = state.projectId;
+
+    // Get positions of this project's tasks in global order
+    const projectPositions = [];
+    globalOrder.forEach((k, idx) => {
+      if(k.startsWith(pid + ":")) projectPositions.push(idx);
+    });
+
+    // Update global order with new project task order
+    const newProjectOrder = list.map(t => taskKey(t));
+    if(projectPositions.length > 0 && newProjectOrder.length > 0){
+      for(let i = 0; i < Math.min(projectPositions.length, newProjectOrder.length); i++){
+        globalOrder[projectPositions[i]] = newProjectOrder[i];
+      }
+    }
+    state.data.globalOrder[orderKey] = globalOrder;
+  }
+
+  queueSave();
+}
+
 function enableDragProjects(container){
   container.ondragover=(e)=>{
     e.preventDefault();
@@ -3926,7 +4017,55 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
 
   const num = document.createElement("div");
   num.className="num";
-  num.textContent = (i+1)+".";
+
+  // Editable number (click to change position)
+  if(editing.id===task.id && editing.kind==="number"){
+    num.innerHTML = "";
+    const numInput = document.createElement("input");
+    numInput.type = "text";
+    numInput.className = "numInput";
+    numInput.value = editing.draft || String(i+1);
+    numInput.style.width = "32px";
+    numInput.style.padding = "2px 4px";
+    numInput.style.fontSize = "inherit";
+    numInput.style.textAlign = "center";
+    numInput.onkeydown = (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        const newPos = parseInt(numInput.value.trim(), 10);
+        if(Number.isFinite(newPos) && newPos >= 1){
+          moveTaskToPosition(task, newPos);
+        }
+        stopEditing();
+        renderAll();
+      }
+      if(e.key === "Escape"){
+        stopEditing();
+        renderAll();
+      }
+    };
+    numInput.onblur = () => {
+      const newPos = parseInt(numInput.value.trim(), 10);
+      if(Number.isFinite(newPos) && newPos >= 1 && newPos !== (i+1)){
+        moveTaskToPosition(task, newPos);
+      }
+      stopEditing();
+      renderAll();
+    };
+    num.appendChild(numInput);
+    setTimeout(() => { numInput.focus(); numInput.select(); }, 0);
+  } else {
+    num.textContent = (i+1)+".";
+    num.style.cursor = "pointer";
+    num.title = "Click to change position";
+    num.onclick = (e) => {
+      e.stopPropagation();
+      editing.id = task.id;
+      editing.kind = "number";
+      editing.draft = String(i+1);
+      renderAll();
+    };
+  }
 
   const mainCol = document.createElement("div");
   mainCol.className="mainCol";
@@ -4344,8 +4483,47 @@ function getCurrentFocusTask(){
   return focusTopTask();
 }
 
+// Move task to position from focus mode (always uses project's active list)
+function moveTaskToPositionInFocus(task, newPos){
+  const proj = getProject(task.projectId);
+  if(!proj) return;
+
+  const list = proj.active;
+  const currentIdx = list.findIndex(t => t.id === task.id);
+  if(currentIdx === -1) return;
+
+  // Remove from current position
+  list.splice(currentIdx, 1);
+
+  // Insert at new position (clamp to valid range)
+  const targetIdx = Math.min(Math.max(0, newPos - 1), list.length);
+  list.splice(targetIdx, 0, task);
+
+  // Update global order
+  const globalOrder = state.data.globalOrder.active || [];
+  const key = taskKey(task);
+  const pid = task.projectId;
+
+  // Get positions of this project's tasks in global order
+  const projectPositions = [];
+  globalOrder.forEach((k, idx) => {
+    if(k.startsWith(pid + ":")) projectPositions.push(idx);
+  });
+
+  // Update global order with new project task order
+  const newProjectOrder = list.map(t => taskKey(t));
+  if(projectPositions.length > 0 && newProjectOrder.length > 0){
+    for(let i = 0; i < Math.min(projectPositions.length, newProjectOrder.length); i++){
+      globalOrder[projectPositions[i]] = newProjectOrder[i];
+    }
+  }
+  state.data.globalOrder.active = globalOrder;
+
+  queueSave();
+}
+
 // Focus mode editing state
-let focusEditing = { field: null }; // field: null | "text" | "estimate"
+let focusEditing = { field: null }; // field: null | "text" | "estimate" | "position"
 
 function renderFocus(){
   const top = getCurrentFocusTask();
@@ -4391,18 +4569,92 @@ function renderFocus(){
     focusTextEl.title = top ? "Click to edit" : "";
   }
 
-  let metaText = "";
+  // Meta line with editable position
+  const focusMetaEl = $("focusMeta");
+  focusMetaEl.innerHTML = "";
+
   if(top){
     const proj = getProject(top.projectId);
     const activeList = proj?.active || [];
     const idx = activeList.findIndex(t => t.id === top.id);
-    const position = idx >= 0 ? `Item ${idx + 1} of ${activeList.length}` : "Focused task";
-    metaText = `${projectDisplayName(top.projectId).toUpperCase()} · ${position}`;
-    if(!isTopTask) metaText += " · (Custom focus)";
+
+    // Project name
+    const projSpan = document.createElement("span");
+    projSpan.textContent = projectDisplayName(top.projectId).toUpperCase() + " · ";
+    focusMetaEl.appendChild(projSpan);
+
+    // Editable position
+    if(focusEditing.field === "position"){
+      const posInput = document.createElement("input");
+      posInput.type = "text";
+      posInput.className = "focusPosInput";
+      posInput.value = String(idx + 1);
+      posInput.style.width = "40px";
+      posInput.style.padding = "2px 4px";
+      posInput.style.fontSize = "inherit";
+      posInput.style.textAlign = "center";
+      posInput.style.background = "var(--surface)";
+      posInput.style.border = "1px solid var(--line)";
+      posInput.style.borderRadius = "4px";
+      posInput.style.color = "inherit";
+      posInput.onkeydown = (e) => {
+        if(e.key === "Enter"){
+          e.preventDefault();
+          const newPos = parseInt(posInput.value.trim(), 10);
+          if(Number.isFinite(newPos) && newPos >= 1){
+            moveTaskToPositionInFocus(top, newPos);
+          }
+          focusEditing.field = null;
+          renderFocus();
+          renderAll();
+        }
+        if(e.key === "Escape"){
+          focusEditing.field = null;
+          renderFocus();
+        }
+      };
+      posInput.onblur = () => {
+        const newPos = parseInt(posInput.value.trim(), 10);
+        if(Number.isFinite(newPos) && newPos >= 1 && newPos !== (idx + 1)){
+          moveTaskToPositionInFocus(top, newPos);
+          renderAll();
+        }
+        focusEditing.field = null;
+        renderFocus();
+      };
+      focusMetaEl.appendChild(document.createTextNode("Item "));
+      focusMetaEl.appendChild(posInput);
+      focusMetaEl.appendChild(document.createTextNode(` of ${activeList.length}`));
+      setTimeout(() => { posInput.focus(); posInput.select(); }, 0);
+    } else {
+      const posSpan = document.createElement("span");
+      posSpan.className = "focusPosSpan";
+      posSpan.style.cursor = "pointer";
+      posSpan.style.textDecoration = "underline";
+      posSpan.style.textDecorationStyle = "dotted";
+      posSpan.title = "Click to change position";
+      if(idx >= 0){
+        posSpan.textContent = `Item ${idx + 1} of ${activeList.length}`;
+        posSpan.onclick = () => {
+          focusEditing.field = "position";
+          renderFocus();
+        };
+      } else {
+        posSpan.textContent = "Focused task";
+        posSpan.style.cursor = "default";
+        posSpan.style.textDecoration = "none";
+      }
+      focusMetaEl.appendChild(posSpan);
+    }
+
+    if(!isTopTask){
+      const customSpan = document.createElement("span");
+      customSpan.textContent = " · (Custom focus)";
+      focusMetaEl.appendChild(customSpan);
+    }
   }else{
-    metaText = projectDisplayName(state.projectId).toUpperCase();
+    focusMetaEl.textContent = projectDisplayName(state.projectId).toUpperCase();
   }
-  $("focusMeta").textContent = metaText;
 
   // Estimate line - editable
   const est = top?.estimateMins ?? 0;
