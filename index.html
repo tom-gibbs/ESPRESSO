@@ -5261,14 +5261,25 @@ $("refreshDriveBtn").onclick = () => {
 
   // Store callback to re-enable button
   const origCallback = tokenClient.callback;
-  tokenClient.callback = (resp) => {
-    btn.disabled = false;
+  tokenClient.callback = async (resp) => {
     btn.querySelector("svg").style.animation = "";
     if(resp.error){
+      btn.disabled = false;
       setStatus("Refresh failed - try signing in again");
     } else {
-      setStatus("Connection refreshed");
-      updateSyncUI();
+      // Connection refreshed, now sync
+      setStatus("Syncing...");
+      $("syncBtn").classList.add("syncing");
+      try {
+        await pushToDrive();
+        clearPendingSync();
+        setStatus("Synced to Drive");
+        updateSyncUI();
+      } catch(e){
+        setStatus("Sync failed: " + e.message);
+      }
+      $("syncBtn").classList.remove("syncing");
+      btn.disabled = false;
     }
     tokenClient.callback = origCallback;
     if(origCallback) origCallback(resp);
