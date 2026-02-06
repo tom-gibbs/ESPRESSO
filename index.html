@@ -658,32 +658,32 @@ html[data-theme="light"] .listFooter{ color: rgba(107,114,128,.85); }
   margin-top: 40px;
   padding: 20px 0 40px;
   display: flex;
-  justify-content: center;
-  border-top: 1px solid var(--line);
+  justify-content: flex-end;
 }
 .infoBtn{
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+  font-family: Georgia, serif;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .infoBtn:hover{
   background: rgba(255,255,255,.06);
   color: var(--text);
+  border-color: var(--accent);
 }
 html[data-theme="light"] .infoBtn:hover{ background: rgba(0,0,0,.04); }
-.infoBtn svg{
-  width: 16px;
-  height: 16px;
-  opacity: 0.7;
-}
 
 /* Shortcuts overlay */
 .shortcutsBox{
@@ -695,6 +695,10 @@ html[data-theme="light"] .infoBtn:hover{ background: rgba(0,0,0,.04); }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+html[data-theme="light"] .shortcutsBox{
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 20px 60px rgba(15,23,42,.15);
 }
 .shortcutsHeader{
   display: flex;
@@ -1641,10 +1645,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <div id="listFooter" class="listFooter"></div>
 
         <div class="pageBottomSpacer">
-          <button class="infoBtn" id="shortcutsBtn" type="button" title="Keyboard shortcuts & tips">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span>Shortcuts & Tips</span>
-          </button>
+          <button class="infoBtn" id="shortcutsBtn" type="button" title="Shortcuts & Tips">i</button>
         </div>
 
       </div>
