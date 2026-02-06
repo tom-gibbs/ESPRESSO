@@ -1666,11 +1666,11 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <h4>Keyboard Shortcuts</h4>
           <div class="shortcutItem">
             <span class="shortcutDesc">Toggle between last two projects</span>
-            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Space</kbd></span>
           </div>
           <div class="shortcutItem">
             <span class="shortcutDesc">Previous / Next project</span>
-            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></span>
+            <span class="shortcutKey"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></span>
           </div>
           <div class="shortcutItem">
             <span class="shortcutDesc">Open focus mode for a task</span>
@@ -2595,8 +2595,8 @@ document.addEventListener("keydown", (e) => {
   const active = document.activeElement;
   const isTyping = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable);
 
-  // Ctrl+Space: toggle last project (works even when typing)
-  if(e.ctrlKey && e.code === "Space"){
+  // Ctrl+Shift+Space: toggle last project (works even when typing)
+  if(e.ctrlKey && e.shiftKey && e.code === "Space"){
     e.preventDefault();
     toggleLastProject();
     return;
@@ -2605,15 +2605,15 @@ document.addEventListener("keydown", (e) => {
   // Skip navigation shortcuts if typing
   if(isTyping) return;
 
-  // Ctrl+Up: previous project
-  if(e.ctrlKey && e.key === "ArrowUp"){
+  // Ctrl+Shift+Up: previous project
+  if(e.ctrlKey && e.shiftKey && e.key === "ArrowUp"){
     e.preventDefault();
     navigateProject(-1);
     return;
   }
 
-  // Ctrl+Down: next project
-  if(e.ctrlKey && e.key === "ArrowDown"){
+  // Ctrl+Shift+Down: next project
+  if(e.ctrlKey && e.shiftKey && e.key === "ArrowDown"){
     e.preventDefault();
     navigateProject(1);
     return;
