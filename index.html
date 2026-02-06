@@ -3675,8 +3675,18 @@ function deleteTask(task){
    CRUD ACTIONS
    ========================================================= */
 function addItem(text){
-  const t = (text||"").trim();
+  let t = (text||"").trim();
   if(!t) return;
+
+  // Parse rank from end of text, e.g. "My task (1)" or "My task (3)"
+  let rank = null;
+  const rankMatch = t.match(/\((\d+)\)\s*$/);
+  if(rankMatch){
+    rank = parseInt(rankMatch[1], 10);
+    t = t.replace(/\s*\(\d+\)\s*$/, "").trim(); // Remove rank from text
+  }
+
+  if(!t) return; // In case text was only "(1)"
 
   // On summary page or all projects view, use inline selector; otherwise use current project
   let targetPid;
@@ -3690,7 +3700,7 @@ function addItem(text){
   if(!proj) return;
 
   const newId = uid();
-  proj.active.push(normalizeTask({
+  const newTask = normalizeTask({
     id: newId,
     projectId: proj.id,
     text: t,
@@ -3700,7 +3710,15 @@ function addItem(text){
     doneAt: null,
     dependsOn: [],
     notes: ""
-  }, proj.id));
+  }, proj.id);
+
+  // Insert at specified rank or append to end
+  if(rank !== null && rank >= 1){
+    const insertIdx = Math.min(rank - 1, proj.active.length);
+    proj.active.splice(insertIdx, 0, newTask);
+  } else {
+    proj.active.push(newTask);
+  }
 
   enforceDependenciesAllProjects();
   queueSave();
