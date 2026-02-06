@@ -2468,16 +2468,22 @@ function renderProjectMenu(filter = ""){
   if((!searchTerm || "all projects".includes(searchTerm)) && !projectReorderMode){
     const allRow = document.createElement("div");
     allRow.className = "projectRow allProjectsRow";
+    allRow.style.cursor = "pointer";
     const allBtn = document.createElement("button");
     allBtn.className = "projectNameBtn";
     allBtn.type="button";
     allBtn.innerHTML = `ALL PROJECTS${state.projectId===ALL_ID ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
-    allBtn.onclick = ()=>{
+    const selectAllProjects = ()=>{
       state.projectId = ALL_ID;
       $("newProjectName").value = "";
       closeProjectMenu();
       saveViewState();
       renderAll();
+    };
+    allBtn.onclick = selectAllProjects;
+    allRow.onclick = (e) => {
+      if(e.target.closest('.right') || e.target.closest('.iconBtn')) return;
+      selectAllProjects();
     };
     allRow.appendChild(allBtn);
     projectMenuList.appendChild(allRow);
@@ -2490,23 +2496,31 @@ function renderProjectMenu(filter = ""){
     const row = document.createElement("div");
     row.className = "projectRow";
     row.dataset.pid = pid;
+    row.style.cursor = "pointer";
 
     // Drag handle (shown only in reorder mode via CSS)
     const handle = document.createElement("span");
     handle.className = "dragHandle";
     handle.textContent = "≡";
 
-    const btn = document.createElement("button");
-    btn.className = "projectNameBtn";
-    btn.type="button";
-    btn.innerHTML = `${escapeHtml(p.name)}${state.projectId===pid ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
-    btn.onclick = ()=>{
+    const selectProject = ()=>{
       if(projectReorderMode) return; // Don't switch projects in reorder mode
       state.projectId = pid;
       $("newProjectName").value = "";
       closeProjectMenu();
       saveViewState();
       renderAll();
+    };
+
+    const btn = document.createElement("button");
+    btn.className = "projectNameBtn";
+    btn.type="button";
+    btn.innerHTML = `${escapeHtml(p.name)}${state.projectId===pid ? '<span class="projectNameMeta">(Current)</span>' : ''}`;
+    btn.onclick = selectProject;
+
+    row.onclick = (e) => {
+      if(e.target.closest('.right') || e.target.closest('.iconBtn') || e.target.closest('.dragHandle')) return;
+      selectProject();
     };
 
     const right = document.createElement("div");
