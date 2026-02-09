@@ -1250,6 +1250,124 @@ html[data-theme="light"] .syncStatus{background:rgba(255,255,255,.92)}
 .syncActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 
 /* =========================================================
+   COWORK OVERLAY & UI
+   ========================================================= */
+.coworkOverlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.72);
+  backdrop-filter:blur(10px);
+  display:none;z-index:10001;
+}
+html[data-theme="light"] .coworkOverlay{background:rgba(15,23,42,.55)}
+.coworkOverlay.on{display:block}
+.coworkInner{height:100%;display:flex;align-items:center;justify-content:center;padding:22px}
+.coworkBox{
+  width:min(440px,96vw);
+  background:linear-gradient(180deg,rgba(17,19,25,.92),rgba(17,19,25,.82));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:22px;
+  box-shadow:0 40px 140px rgba(0,0,0,.65);
+  padding:24px;
+  text-align:center;
+}
+html[data-theme="light"] .coworkBox{
+  background:rgba(255,255,255,.94);
+  border:1px solid var(--line);
+  box-shadow:0 30px 120px rgba(15,23,42,.18);
+}
+.coworkBox h3{margin:0 0 8px;font-size:20px;font-weight:800}
+.coworkBox p{margin:0 0 20px;color:var(--muted);font-size:14px}
+.coworkActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.coworkActions button{min-width:120px}
+.coworkMembers{
+  display:flex;flex-direction:column;gap:8px;
+  margin:16px 0;text-align:left;
+}
+.coworkMemberRow{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:12px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--line);
+}
+html[data-theme="light"] .coworkMemberRow{background:rgba(255,255,255,.92)}
+.coworkMemberRow img{width:32px;height:32px;border-radius:999px;border:1px solid var(--line)}
+.coworkMemberName{font-weight:700;font-size:14px}
+.coworkMemberEmail{font-size:12px;color:var(--muted)}
+.coworkStatusBox{
+  font-size:13px;color:var(--muted);
+  padding:12px;border-radius:12px;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--line);
+  margin-bottom:16px;
+}
+html[data-theme="light"] .coworkStatusBox{background:rgba(255,255,255,.92)}
+.coworkStatusBox.success{color:#22c55e;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.coworkStatusBox.error{color:#ef4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+
+/* Cowork banner shown at top of list in cowork mode */
+.coworkBanner{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;margin:0 0 14px;
+  border-radius:var(--r-lg);
+  background:rgba(147,112,219,.12);
+  border:1px solid rgba(147,112,219,.22);
+}
+html[data-theme="light"] .coworkBanner{
+  background:rgba(109,66,184,.08);
+  border:1px solid rgba(109,66,184,.16);
+}
+.coworkBannerLabel{
+  font-weight:800;font-size:14px;letter-spacing:.1em;
+  color:rgba(180,150,230,1);
+}
+html[data-theme="light"] .coworkBannerLabel{color:rgba(109,66,184,1)}
+.coworkBannerAvatars{display:flex;gap:0;margin-left:auto}
+.coworkBannerAvatars img{
+  width:28px;height:28px;border-radius:999px;
+  border:2px solid var(--bg);
+  margin-left:-6px;
+}
+.coworkBannerAvatars img:first-child{margin-left:0}
+.coworkBannerExit{
+  margin-left:8px;
+  padding:6px 12px;border-radius:999px;
+  font-size:12px;font-weight:700;
+  background:rgba(147,112,219,.15);
+  border:1px solid rgba(147,112,219,.25);
+  color:rgba(180,150,230,1);
+  cursor:pointer;
+}
+html[data-theme="light"] .coworkBannerExit{
+  background:rgba(109,66,184,.10);
+  border:1px solid rgba(109,66,184,.18);
+  color:rgba(109,66,184,1);
+}
+.coworkBannerExit:hover{background:rgba(147,112,219,.25)}
+
+/* Creator badge on task items */
+.creatorBadge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px 2px 2px;border-radius:999px;
+  background:rgba(147,112,219,.12);
+  border:1px solid rgba(147,112,219,.18);
+  font-size:11px;font-weight:600;
+  color:rgba(180,150,230,.9);
+  white-space:nowrap;
+  vertical-align:middle;
+  margin-left:6px;
+}
+html[data-theme="light"] .creatorBadge{
+  background:rgba(109,66,184,.08);
+  border:1px solid rgba(109,66,184,.14);
+  color:rgba(109,66,184,.85);
+}
+.creatorBadge img{width:16px;height:16px;border-radius:999px}
+
+/* Bottom nav cowork active state */
+.bottomNavBtn.coworkActive{color:rgba(180,150,230,1)}
+html[data-theme="light"] .bottomNavBtn.coworkActive{color:rgba(109,66,184,1)}
+
+/* =========================================================
    SWIPE GESTURES (mobile)
    ========================================================= */
 /* Swipe wrapper and actions - hidden by default */
@@ -1523,6 +1641,16 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .syncUserName{font-size:14px}
   .syncUserEmail{font-size:11px}
   .googleBtn{padding:10px 20px;font-size:13px}
+
+  /* Cowork overlay */
+  .coworkInner{padding:12px}
+  .coworkBox{
+    width:100%;
+    border-radius:18px;
+    padding:18px;
+  }
+  .coworkBox h3{font-size:18px}
+  .coworkBox p{font-size:13px}
 
   /* Summary page */
   .summaryPage{margin-top:10px}
@@ -1865,6 +1993,43 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   </div>
 </div>
 
+<!-- Cowork Overlay -->
+<div class="coworkOverlay" id="coworkOverlay" aria-hidden="true">
+  <div class="coworkInner">
+    <div class="coworkBox" role="dialog" aria-modal="true" aria-label="Cowork Space">
+      <h3>Cowork Space</h3>
+      <p id="coworkDescription">Share a task list with a friend via Google Drive</p>
+
+      <div id="coworkStatusBox" class="coworkStatusBox" style="display:none"></div>
+
+      <div id="coworkMembers" class="coworkMembers" style="display:none"></div>
+
+      <div id="coworkSetup">
+        <div id="coworkNotSignedIn" style="display:none">
+          <p style="color:var(--muted);font-size:13px">Sign in with Google first (use the Sync button)</p>
+        </div>
+        <div id="coworkSignedIn" style="display:none">
+          <div class="coworkActions">
+            <button id="coworkCreateBtn" class="primary" type="button">Create Space</button>
+            <button id="coworkJoinBtn" class="accent" type="button">Join Space</button>
+          </div>
+        </div>
+        <div id="coworkConnected" style="display:none">
+          <div class="coworkActions">
+            <button id="coworkEnterBtn" class="primary" type="button">Enter Cowork Space</button>
+            <button id="coworkSyncBtn" class="subtle" type="button">Sync Now</button>
+            <button id="coworkLeaveBtn" class="danger" type="button">Leave Space</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="coworkActions" style="margin-top:20px">
+        <button id="closeCoworkBtn" class="subtle" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Mobile Bottom Navigation -->
 <nav class="bottomNav" id="bottomNav">
   <button class="bottomNavBtn" data-action="summary" title="Summary">
@@ -1878,6 +2043,10 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   <button class="bottomNavBtn" data-action="focus" title="Focus Mode">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
     <span>Focus</span>
+  </button>
+  <button class="bottomNavBtn" data-action="cowork" title="Cowork">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Cowork</span>
   </button>
   <button class="bottomNavBtn" data-action="sync" title="Sync">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
@@ -2018,6 +2187,11 @@ $("focusNotesIconSlot").innerHTML = ICONS.pencil;
 const STATE_KEY = "espresso_state_v1";
 const TIMER_KEY = "espresso_timer_v3";
 
+/* Cowork constants */
+const COWORK_STATE_KEY = "espresso_cowork_v1";
+const COWORK_DRIVE_FILE_NAME = "espresso-cowork.json";
+const COWORK_FILE_ID_KEY = "espresso_cowork_file_id";
+
 /* stable per-tab client id */
 const CLIENT_ID = (() => {
   const KEY = "espresso_client_id_v1";
@@ -2075,7 +2249,8 @@ function normalizeTask(t, projectId){
     notes: String(t?.notes ?? ""),
     color: (t?.color && TASK_COLORS.includes(t.color)) ? t.color : null,
     parentId: String(t?.parentId ?? ""),
-    collapsed: Boolean(t?.collapsed)
+    collapsed: Boolean(t?.collapsed),
+    createdBy: t?.createdBy || null
   };
 }
 function taskKey(task){ return `${task.projectId}:${task.id}`; }
@@ -2100,6 +2275,88 @@ const state = {
     projectOrder: []     // flat order
   }
 };
+
+/* Cowork state (completely separate from personal state) */
+const coworkState = {
+  active: false,     // currently in cowork mode?
+  view: "active",    // active | paused | done
+  doneFilter: "today",
+  data: null         // loaded cowork data or null
+};
+let coworkFileId = null;
+let coworkPollTimer = null;
+
+function isCoworkMode(){ return coworkState.active && coworkState.data; }
+
+function defaultCoworkData(){
+  return {
+    meta: { rev: 0, created_by: null, members: [] },
+    project: {
+      id: "cowork",
+      active: [],
+      paused: [],
+      done_today: [],
+      done_week: [],
+      done_history: [],
+      meta_done: { day_start_ms: startOfDayLocal(), week_start_ms: startOfWeekMondayLocal() }
+    }
+  };
+}
+
+function fixCoworkData(d){
+  if(!d || typeof d !== "object") d = defaultCoworkData();
+  if(!d.meta) d.meta = { rev: 0, created_by: null, members: [] };
+  d.meta.rev = Number(d.meta.rev || 0);
+  if(!Array.isArray(d.meta.members)) d.meta.members = [];
+  if(!d.project || typeof d.project !== "object"){
+    d.project = defaultCoworkData().project;
+  }
+  const p = d.project;
+  if(!p.id) p.id = "cowork";
+  for(const k of ["active","paused","done_today","done_week","done_history"]){
+    if(!Array.isArray(p[k])) p[k] = [];
+    p[k] = p[k].map(t => normalizeTask(t, "cowork"));
+  }
+  if(!p.meta_done) p.meta_done = { day_start_ms: startOfDayLocal(), week_start_ms: startOfWeekMondayLocal() };
+  return d;
+}
+
+function coworkProject(){
+  if(!coworkState.data) return null;
+  return coworkState.data.project;
+}
+
+function coworkCurrentList(){
+  const p = coworkProject();
+  if(!p) return [];
+  if(coworkState.view === "active") return p.active;
+  if(coworkState.view === "paused") return p.paused;
+  if(coworkState.view === "done"){
+    if(coworkState.doneFilter === "today") return p.done_today;
+    if(coworkState.doneFilter === "week") return p.done_week;
+    if(coworkState.doneFilter === "all") return p.done_history;
+    return p.done_today;
+  }
+  return p.active;
+}
+
+function saveCoworkLocal(){
+  if(!coworkState.data) return;
+  try { localStorage.setItem(COWORK_STATE_KEY, JSON.stringify(coworkState.data)); } catch(e){}
+}
+function loadCoworkLocal(){
+  try {
+    const raw = localStorage.getItem(COWORK_STATE_KEY);
+    if(raw) coworkState.data = fixCoworkData(JSON.parse(raw));
+  } catch(e){}
+}
+function saveCoworkFileId(id){
+  coworkFileId = id;
+  try { if(id) localStorage.setItem(COWORK_FILE_ID_KEY, id); else localStorage.removeItem(COWORK_FILE_ID_KEY); } catch(e){}
+}
+function loadCoworkFileId(){
+  try { coworkFileId = localStorage.getItem(COWORK_FILE_ID_KEY) || null; } catch(e){}
+}
 
 const editing = { id:null, kind:null, draft:"" };
 
@@ -3735,12 +3992,25 @@ function showFocusNotesForTask(task){
    PAGE / VIEW
    ========================================================= */
 function setDoneFilter(which){
+  if(isCoworkMode()){
+    coworkState.doneFilter = which;
+    qsa(".doneBtn").forEach(b=>b.classList.toggle("active", b.dataset.done===which));
+    renderAll();
+    return;
+  }
   state.doneFilter = which;
   qsa(".doneBtn").forEach(b=>b.classList.toggle("active", b.dataset.done===which));
   saveViewState();
   renderAll();
 }
 function setView(view){
+  if(isCoworkMode()){
+    coworkState.view = view;
+    qsa(".summaryTab").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
+    stopEditing();
+    renderAll();
+    return;
+  }
   state.view = view;
   qsa(".summaryTab").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   stopEditing();
@@ -3866,6 +4136,19 @@ function syncOrderFromDOMList(){
 
 // Move a task to a specific position (1-indexed)
 function moveTaskToPosition(task, newPos){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    const listKey = (coworkState.view === "active") ? "active" : (coworkState.view === "paused") ? "paused" : null;
+    if(!listKey) return;
+    const list = p[listKey];
+    const idx = list.findIndex(x => x.id === task.id);
+    if(idx < 0) return;
+    list.splice(idx, 1);
+    list.splice(Math.min(Math.max(0, newPos - 1), list.length), 0, task);
+    queueCoworkSave();
+    return;
+  }
   const listKey = (state.view === "active") ? "active"
                : (state.view === "paused") ? "paused"
                : null;
@@ -3993,11 +4276,12 @@ function makeEditInput(value,{onEnter,onEscape,onBlur,placeholder,small}={}){
 }
 function saveEstimate(task, raw){
   const s = String(raw??"").trim();
-  if(!s){ task.estimateMins=0; queueSave(); syncTimerWithEstimate(task); return; }
+  const save = isCoworkMode() ? queueCoworkSave : queueSave;
+  if(!s){ task.estimateMins=0; save(); syncTimerWithEstimate(task); return; }
   const n = Math.round(Number(s));
   if(!Number.isFinite(n) || n<0) return;
   task.estimateMins = n;
-  queueSave();
+  save();
   syncTimerWithEstimate(task);
 }
 function syncTimerWithEstimate(task){
@@ -4023,9 +4307,19 @@ function findTaskInProject(proj, id){
 }
 function updateTaskField(task, field, value){
   task[field] = value;
-  queueSave();
+  if(isCoworkMode()){ queueCoworkSave(); } else { queueSave(); }
 }
 function deleteTask(task){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    for(const k of ["active","paused","done_today","done_week","done_history"]){
+      p[k] = p[k].filter(x => x.id !== task.id);
+    }
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -4061,6 +4355,32 @@ function deleteTask(task){
 function addItem(text){
   let t = (text||"").trim();
   if(!t) return;
+
+  // Cowork mode branch
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    // Parse rank
+    let rank = null;
+    const rankMatch = t.match(/\((\d+)\)\s*$/);
+    if(rankMatch){ rank = parseInt(rankMatch[1], 10); t = t.replace(/\s*\(\d+\)\s*$/, "").trim(); }
+    if(!t) return;
+    const newId = uid();
+    const createdBy = googleUser ? { name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub } : null;
+    const newTask = normalizeTask({ id: newId, projectId: "cowork", text: t, createdAt: Date.now(), createdBy }, "cowork");
+    if(rank !== null && rank >= 1){
+      p.active.splice(Math.min(rank - 1, p.active.length), 0, newTask);
+    } else {
+      p.active.push(newTask);
+    }
+    queueCoworkSave();
+    renderAll();
+    requestAnimationFrame(() => {
+      const newEl = document.querySelector(`[data-id="${newId}"]`);
+      if(newEl){ newEl.scrollIntoView({ behavior: "smooth", block: "nearest" }); newEl.style.animation = "taskAdded 0.5s ease"; }
+    });
+    return;
+  }
 
   // Parse rank from end of text, e.g. "My task (1)" or "My task (3)"
   let rank = null;
@@ -4118,6 +4438,20 @@ function addItem(text){
   });
 }
 function pauseWithReason(task){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    const reason = prompt("Pause reason / blocker (optional):", "");
+    const idx = p.active.findIndex(x => x.id === task.id);
+    if(idx < 0) return;
+    p.active.splice(idx, 1);
+    task.pausedReason = String(reason ?? "");
+    p.paused.push(task);
+    stopEditing();
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -4137,6 +4471,19 @@ function pauseWithReason(task){
   renderAll();
 }
 function resumeTask(task){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    const idx = p.paused.findIndex(x => x.id === task.id);
+    if(idx < 0) return;
+    p.paused.splice(idx, 1);
+    task.pausedReason = "";
+    p.active.push(task);
+    stopEditing();
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -4156,6 +4503,22 @@ function resumeTask(task){
   renderAll();
 }
 function markDone(task){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    for(const k of ["active","paused","done_today","done_week"]){
+      p[k] = p[k].filter(x => x.id !== task.id);
+    }
+    p.done_history = p.done_history.filter(x => x.id !== task.id);
+    task.doneAt = Date.now();
+    p.done_today.push({...task});
+    p.done_week.push({...task});
+    p.done_history.unshift({...task});
+    stopEditing();
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   // Only stop timer if it's tracking this specific task
   const doneKey = taskKey(task);
   if(timerTaskKey === doneKey) stopTimer();
@@ -4184,6 +4547,20 @@ function markDone(task){
   renderAll();
 }
 function restoreFromDone(task){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    p.done_today = p.done_today.filter(x => x.id !== task.id);
+    p.done_week = p.done_week.filter(x => x.id !== task.id);
+    p.done_history = p.done_history.filter(x => x.id !== task.id);
+    task.doneAt = null;
+    task.pausedReason = "";
+    p.active.push(task);
+    stopEditing();
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   const proj = getProject(task.projectId);
   if(!proj) return;
 
@@ -4201,6 +4578,16 @@ function restoreFromDone(task){
   renderAll();
 }
 function clearDoneCurrent(){
+  if(isCoworkMode()){
+    const p = coworkProject();
+    if(!p) return;
+    if(coworkState.doneFilter === "today") p.done_today = [];
+    else if(coworkState.doneFilter === "week") p.done_week = [];
+    else if(coworkState.doneFilter === "all") p.done_history = [];
+    queueCoworkSave();
+    renderAll();
+    return;
+  }
   if(state.projectId === ALL_ID){
     // Clear from all projects
     for(const pid of state.data.projectOrder){
@@ -4289,7 +4676,7 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
       opt.onclick = (ev) => {
         ev.stopPropagation();
         task.color = c;
-        queueSave();
+        if(isCoworkMode()) queueCoworkSave(); else queueSave();
         picker.remove();
         activeColorPicker = null;
         renderAll();
@@ -4409,6 +4796,21 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     tag.textContent = projectDisplayName(task.projectId).toUpperCase();
     tag.style.opacity = ".85";
     textRow.appendChild(tag);
+  }
+
+  // Creator badge (cowork mode)
+  if(isCoworkMode() && task.createdBy){
+    const cb = document.createElement("span");
+    cb.className = "creatorBadge";
+    if(task.createdBy.picture){
+      const img = document.createElement("img");
+      img.src = task.createdBy.picture;
+      img.alt = "";
+      cb.appendChild(img);
+    }
+    const firstName = (task.createdBy.name || "").split(" ")[0] || "?";
+    cb.appendChild(document.createTextNode(firstName));
+    textRow.appendChild(cb);
   }
 
   mainCol.appendChild(textRow);
@@ -5377,7 +5779,137 @@ $("inlineProjectSelect").addEventListener("change", (e) => {
   lastInlineProjectSelection = e.target.value;
 });
 
+/* =========================================================
+   COWORK RENDER
+   ========================================================= */
+function renderCoworkBanner(){
+  const p = coworkProject();
+  if(!p) return "";
+  const members = coworkState.data?.meta?.members || [];
+  let avatarsHtml = "";
+  members.forEach(m => {
+    if(m.picture){
+      avatarsHtml += `<img src="${escapeHtml(m.picture)}" alt="${escapeHtml(m.name)}" title="${escapeHtml(m.name)}">`;
+    }
+  });
+  return `<div class="coworkBanner">
+    <span class="coworkBannerLabel">COWORK</span>
+    <div class="coworkBannerAvatars">${avatarsHtml}</div>
+    <button class="coworkBannerExit" id="coworkBannerExitBtn" type="button">Exit</button>
+  </div>`;
+}
+
+function updateCoworkTabCounts(){
+  const p = coworkProject();
+  if(!p) return;
+  const getDoneCount = () => {
+    if(coworkState.doneFilter === "today") return p.done_today.length;
+    if(coworkState.doneFilter === "week") return p.done_week.length;
+    if(coworkState.doneFilter === "all") return p.done_history.length;
+    return p.done_today.length;
+  };
+  const getCount = (view) => {
+    if(view === "active") return p.active.length;
+    if(view === "paused") return p.paused.length;
+    if(view === "done") return getDoneCount();
+    return 0;
+  };
+  qsa(".summaryTab").forEach(tab => {
+    const view = tab.dataset.view;
+    const count = getCount(view);
+    const labels = { active: "Active", paused: "Paused", done: "Done" };
+    tab.textContent = count > 0 ? `${labels[view]} (${count})` : labels[view];
+  });
+}
+
+function renderCoworkList(){
+  const ul = $("list");
+  ul.innerHTML = "";
+
+  rolloverCoworkDoneBuckets();
+
+  const showDoneUI = (coworkState.view === "done");
+  $("listTopRow").style.display = showDoneUI ? "" : "none";
+
+  const items = coworkCurrentList();
+
+  if(items.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "emptyState";
+    const doneHints = { today: "No tasks completed today", week: "No tasks completed this week", all: "No task history yet" };
+    const messages = {
+      active: { icon: "☕", text: "No active tasks", hint: "Add a task to get started" },
+      paused: { icon: "⏸", text: "No paused tasks", hint: "Tasks you pause will appear here" },
+      done: { icon: "✓", text: "No completed tasks", hint: doneHints[coworkState.doneFilter] || doneHints.today }
+    };
+    const msg = messages[coworkState.view] || messages.active;
+    empty.innerHTML = `<div class="emptyIcon">${msg.icon}</div><div class="emptyText">${msg.text}</div><div class="emptyHint">${msg.hint}</div>`;
+    ul.appendChild(empty);
+    return;
+  }
+
+  items.forEach((task, i) => {
+    const li = document.createElement("li");
+    renderItem(li, task, i, {showHandle: true, showNum: true});
+    ul.appendChild(li);
+  });
+}
+
+function renderAllCowork(){
+  updateCoworkTabCounts();
+
+  // Hide personal-mode UI
+  $("sectionHeaderWrap").style.display = "none";
+  $("inlineProjectSelect").style.display = "none";
+  $("summaryPage").style.display = "none";
+  $("list").style.display = "";
+  $("summaryTabs").style.display = "";
+  $("listFooter").style.display = "none";
+
+  $("newText").disabled = false;
+  $("newText").placeholder = "Add a cowork task…";
+
+  // Render banner + list
+  const banner = renderCoworkBanner();
+  const ul = $("list");
+  renderCoworkList();
+  // Insert banner before list items
+  ul.insertAdjacentHTML("afterbegin", banner);
+
+  // Wire up exit button
+  const exitBtn = document.getElementById("coworkBannerExitBtn");
+  if(exitBtn) exitBtn.onclick = () => exitCoworkMode();
+
+  // Highlight active tab
+  qsa(".summaryTab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.view === coworkState.view);
+  });
+
+  // Highlight done filter
+  qsa(".doneBtn").forEach(b => {
+    b.classList.toggle("active", b.dataset.done === coworkState.doneFilter);
+  });
+
+  // Update bottom nav
+  updateCoworkBottomNav();
+}
+
+function updateCoworkBottomNav(){
+  qsa(".bottomNavBtn").forEach(btn => {
+    btn.classList.remove("coworkActive");
+    if(btn.dataset.action === "cowork" && isCoworkMode()){
+      btn.classList.add("coworkActive");
+    }
+  });
+}
+
 function renderAll(){
+  // Clear cowork nav highlight when not in cowork mode
+  qsa(".bottomNavBtn").forEach(btn => btn.classList.remove("coworkActive"));
+  if(isCoworkMode()){
+    renderAllCowork();
+    return;
+  }
   ensureCurrentProject();
   updateSectionHeader();
   renderProjectMenu();
@@ -5605,6 +6137,10 @@ $("forceSaveBtn").onclick = async ()=>{
   renderAll();
   updateHeaderTimer();
 
+  // Initialize cowork state
+  loadCoworkFileId();
+  loadCoworkLocal();
+
   // Initialize Google Sync
   initGoogleSync();
 })();
@@ -5613,7 +6149,7 @@ $("forceSaveBtn").onclick = async ()=>{
    GOOGLE DRIVE SYNC
    ========================================================= */
 const GOOGLE_CLIENT_ID = '146120049361-nki2hqoh9ddn9i64g5hv4tbgeaq8p90p.apps.googleusercontent.com';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_FILE_NAME = 'espresso-state.json';
 
 let googleUser = null;
@@ -6021,6 +6557,157 @@ async function pushToDrive(){
   await writeDriveFile(file?.id || null, payload);
 }
 
+/* =========================================================
+   COWORK DRIVE SYNC
+   ========================================================= */
+async function findCoworkDriveFile(){
+  if(!googleUser || !gapiInited) return null;
+  // Try cached file ID first
+  if(coworkFileId){
+    try {
+      const resp = await gapi.client.drive.files.get({ fileId: coworkFileId, fields: "id,name,trashed" });
+      if(resp.result && !resp.result.trashed) return resp.result;
+    } catch(e){ /* file ID stale, search instead */ }
+  }
+  // Search own files
+  try {
+    const resp = await gapi.client.drive.files.list({
+      q: `name='${COWORK_DRIVE_FILE_NAME}' and trashed=false`,
+      spaces: "drive",
+      fields: "files(id, name, modifiedTime)"
+    });
+    if(resp.result.files?.length) return resp.result.files[0];
+  } catch(e){}
+  // Search shared files
+  try {
+    const resp = await gapi.client.drive.files.list({
+      q: `name='${COWORK_DRIVE_FILE_NAME}' and trashed=false and sharedWithMe=true`,
+      spaces: "drive",
+      fields: "files(id, name, modifiedTime)"
+    });
+    if(resp.result.files?.length) return resp.result.files[0];
+  } catch(e){}
+  return null;
+}
+
+async function pullCoworkFromDrive(){
+  if(!googleUser || !gapiInited) return false;
+  try {
+    const file = await findCoworkDriveFile();
+    if(!file) return false;
+    saveCoworkFileId(file.id);
+    const data = await readDriveFile(file.id);
+    if(!data) return false;
+    coworkState.data = fixCoworkData(data);
+    ensureCoworkMember();
+    saveCoworkLocal();
+    return true;
+  } catch(e){
+    console.error("Cowork pull error:", e);
+    return false;
+  }
+}
+
+async function pushCoworkToDrive(){
+  if(!googleUser || !gapiInited || !coworkState.data || !coworkFileId) return;
+  coworkState.data.meta.rev = (coworkState.data.meta.rev || 0) + 1;
+  ensureCoworkMember();
+  const payload = { meta: coworkState.data.meta, project: coworkState.data.project };
+  try {
+    await writeDriveFile(coworkFileId, payload);
+    saveCoworkLocal();
+  } catch(e){
+    console.error("Cowork push error:", e);
+  }
+}
+
+async function createCoworkDriveFile(){
+  if(!googleUser || !gapiInited) return false;
+  const data = defaultCoworkData();
+  data.meta.created_by = { name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub };
+  data.meta.members = [{ name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub }];
+  coworkState.data = data;
+
+  // Create the file on Drive with proper name
+  const boundary = "espresso_cowork_boundary";
+  const metadata = { name: COWORK_DRIVE_FILE_NAME, mimeType: "application/json" };
+  const body = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(metadata),
+    `--${boundary}`,
+    "Content-Type: application/json",
+    "",
+    JSON.stringify({ meta: data.meta, project: data.project }),
+    `--${boundary}--`
+  ].join("\r\n");
+
+  const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${gapi.client.getToken().access_token}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body
+  });
+  if(!resp.ok) throw new Error("Failed to create cowork file");
+  const result = await resp.json();
+  saveCoworkFileId(result.id);
+  saveCoworkLocal();
+  return true;
+}
+
+function ensureCoworkMember(){
+  if(!coworkState.data || !googleUser) return;
+  const members = coworkState.data.meta.members;
+  const exists = members.some(m => m.email === googleUser.email);
+  if(!exists){
+    members.push({ name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub });
+  } else {
+    // Update name/picture in case they changed
+    const m = members.find(m => m.email === googleUser.email);
+    if(m){ m.name = googleUser.name; m.picture = googleUser.picture; }
+  }
+}
+
+function startCoworkPolling(){
+  stopCoworkPolling();
+  coworkPollTimer = setInterval(async () => {
+    if(!isCoworkMode() || !googleUser || !gapiInited) return;
+    try {
+      const pulled = await pullCoworkFromDrive();
+      if(pulled) renderAll();
+    } catch(e){
+      console.error("Cowork poll error:", e);
+    }
+  }, 15000);
+}
+function stopCoworkPolling(){
+  if(coworkPollTimer){ clearInterval(coworkPollTimer); coworkPollTimer = null; }
+}
+
+function queueCoworkSave(){
+  saveCoworkLocal();
+  clearTimeout(window._coworkDriveSaveTimer);
+  window._coworkDriveSaveTimer = setTimeout(async () => {
+    if(googleUser && gapiInited && navigator.onLine){
+      try { await pushCoworkToDrive(); } catch(e){ console.error("Cowork drive push error:", e); }
+    }
+  }, 2000);
+}
+
+// Rollover cowork done buckets
+function rolloverCoworkDoneBuckets(){
+  if(!coworkState.data) return;
+  const p = coworkState.data.project;
+  if(!p.meta_done) p.meta_done = { day_start_ms: startOfDayLocal(), week_start_ms: startOfWeekMondayLocal() };
+  const nowDay = startOfDayLocal();
+  const nowWeek = startOfWeekMondayLocal();
+  if(p.meta_done.day_start_ms !== nowDay){ p.done_today = []; p.meta_done.day_start_ms = nowDay; }
+  if(p.meta_done.week_start_ms !== nowWeek){ p.done_week = []; p.meta_done.week_start_ms = nowWeek; }
+}
+
 // Pending sync tracking
 let pendingSync = false;
 const PENDING_SYNC_KEY = "espresso_pending_sync";
@@ -6054,6 +6741,10 @@ window.addEventListener("online", async () => {
     } catch(e){
       console.error("Online sync failed:", e);
     }
+  }
+  // Also push cowork data if in cowork mode
+  if(isCoworkMode() && googleUser && gapiInited){
+    try { await pushCoworkToDrive(); } catch(e){}
   }
 });
 
@@ -6114,6 +6805,156 @@ $("syncOverlay").addEventListener("click", (e) => {
   }
 });
 
+/* =========================================================
+   COWORK MODE SWITCHING & OVERLAY
+   ========================================================= */
+const coworkOverlay = $("coworkOverlay");
+
+function openCoworkModal(){
+  coworkOverlay.classList.add("on");
+  document.body.style.overflow = "hidden";
+  updateCoworkOverlayUI();
+}
+function closeCoworkModal(){
+  coworkOverlay.classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("closeCoworkBtn").onclick = closeCoworkModal;
+coworkOverlay.addEventListener("click", (e) => { if(e.target === coworkOverlay || e.target.classList.contains("coworkInner")) closeCoworkModal(); });
+
+function setCoworkStatus(msg, type=""){
+  const box = $("coworkStatusBox");
+  box.textContent = msg;
+  box.className = "coworkStatusBox" + (type ? " " + type : "");
+  box.style.display = msg ? "" : "none";
+}
+
+function updateCoworkOverlayUI(){
+  const signedIn = !!googleUser && !needsReconnect;
+  const hasFile = !!coworkFileId;
+  const hasData = !!coworkState.data;
+
+  $("coworkNotSignedIn").style.display = signedIn ? "none" : "";
+  $("coworkSignedIn").style.display = (signedIn && !hasFile) ? "" : "none";
+  $("coworkConnected").style.display = (signedIn && hasFile) ? "" : "none";
+
+  // Show members
+  const membersEl = $("coworkMembers");
+  if(hasData && coworkState.data.meta.members.length){
+    membersEl.style.display = "";
+    membersEl.innerHTML = "";
+    coworkState.data.meta.members.forEach(m => {
+      const row = document.createElement("div");
+      row.className = "coworkMemberRow";
+      row.innerHTML = `<img src="${escapeHtml(m.picture || "")}" alt="">
+        <div><div class="coworkMemberName">${escapeHtml(m.name || "Unknown")}</div>
+        <div class="coworkMemberEmail">${escapeHtml(m.email || "")}</div></div>`;
+      membersEl.appendChild(row);
+    });
+  } else {
+    membersEl.style.display = "none";
+  }
+
+  // Description
+  if(!signedIn){
+    $("coworkDescription").textContent = "Sign in with Google first to use cowork mode";
+  } else if(!hasFile){
+    $("coworkDescription").textContent = "Create a new space or join a friend's shared space";
+  } else {
+    $("coworkDescription").textContent = "Your cowork space is ready";
+  }
+}
+
+$("coworkCreateBtn").onclick = async () => {
+  const btn = $("coworkCreateBtn");
+  btn.disabled = true;
+  setCoworkStatus("Creating cowork space...", "");
+  try {
+    await createCoworkDriveFile();
+    setCoworkStatus("Space created! Share espresso-cowork.json from your Google Drive with your friend.", "success");
+    updateCoworkOverlayUI();
+  } catch(e){
+    setCoworkStatus("Failed to create space: " + e.message, "error");
+  }
+  btn.disabled = false;
+};
+
+$("coworkJoinBtn").onclick = async () => {
+  const btn = $("coworkJoinBtn");
+  btn.disabled = true;
+  setCoworkStatus("Searching for shared cowork file...", "");
+  try {
+    const found = await pullCoworkFromDrive();
+    if(found){
+      setCoworkStatus("Found cowork space! Tap 'Enter Cowork Space' to start.", "success");
+      updateCoworkOverlayUI();
+    } else {
+      setCoworkStatus("No shared cowork file found. Ask your friend to share espresso-cowork.json with you.", "error");
+    }
+  } catch(e){
+    setCoworkStatus("Search failed: " + e.message, "error");
+  }
+  btn.disabled = false;
+};
+
+$("coworkEnterBtn").onclick = () => {
+  closeCoworkModal();
+  enterCoworkMode();
+};
+
+$("coworkSyncBtn").onclick = async () => {
+  const btn = $("coworkSyncBtn");
+  btn.disabled = true;
+  setCoworkStatus("Syncing...", "");
+  try {
+    await pullCoworkFromDrive();
+    setCoworkStatus("Synced!", "success");
+    updateCoworkOverlayUI();
+    if(isCoworkMode()) renderAll();
+  } catch(e){
+    setCoworkStatus("Sync failed: " + e.message, "error");
+  }
+  btn.disabled = false;
+};
+
+$("coworkLeaveBtn").onclick = () => {
+  if(!confirm("Leave cowork space? Your local cowork data will be cleared.")) return;
+  exitCoworkMode();
+  coworkState.data = null;
+  saveCoworkFileId(null);
+  try { localStorage.removeItem(COWORK_STATE_KEY); } catch(e){}
+  setCoworkStatus("Left cowork space", "");
+  updateCoworkOverlayUI();
+};
+
+function enterCoworkMode(){
+  if(!coworkState.data){
+    loadCoworkLocal();
+    if(!coworkState.data) return;
+  }
+  coworkState.active = true;
+  coworkState.view = "active";
+  startCoworkPolling();
+  renderAll();
+  updateCoworkBottomNav();
+}
+
+function exitCoworkMode(){
+  coworkState.active = false;
+  stopCoworkPolling();
+  // Remove cowork highlight
+  qsa(".bottomNavBtn").forEach(btn => btn.classList.remove("coworkActive"));
+  renderAll();
+}
+
+/* Sign out hook: also exit cowork */
+const _origSignOutClick = $("signOutBtn").onclick;
+$("signOutBtn").onclick = () => {
+  exitCoworkMode();
+  stopCoworkPolling();
+  _origSignOutClick();
+};
+
 /* Bottom Navigation handlers */
 qsa(".bottomNavBtn").forEach(btn => {
   btn.onclick = () => {
@@ -6129,6 +6970,9 @@ qsa(".bottomNavBtn").forEach(btn => {
         break;
       case "focus":
         $("focusBtn").click();
+        break;
+      case "cowork":
+        openCoworkModal();
         break;
       case "sync":
         $("syncBtn").click();
@@ -6161,6 +7005,17 @@ qsa(".bottomNavBtn").forEach(btn => {
   function getTaskFromItem(item){
     const id = item.dataset.id;
     if(!id) return null;
+    // Check cowork mode first
+    if(isCoworkMode()){
+      const p = coworkProject();
+      if(p){
+        for(const k of ["active","paused","done_today","done_week","done_history"]){
+          const found = p[k].find(t => t.id === id);
+          if(found) return found;
+        }
+      }
+      return null;
+    }
     for(const proj of Object.values(state.data.projects)){
       for(const t of allTasks(proj)){
         if(t.id === id) return t;
@@ -6365,12 +7220,13 @@ qsa(".bottomNavBtn").forEach(btn => {
     const deltaX = e.changedTouches[0].clientX - tabSwipeStartX;
     if(Math.abs(deltaX) < 80) return;
 
-    const currentIdx = tabOrder.indexOf(state.view);
+    const viewSource = isCoworkMode() ? coworkState : state;
+    const currentIdx = tabOrder.indexOf(viewSource.view);
     if(deltaX > 0 && currentIdx > 0){
-      state.view = tabOrder[currentIdx - 1];
+      viewSource.view = tabOrder[currentIdx - 1];
       renderAll();
     } else if(deltaX < 0 && currentIdx < tabOrder.length - 1){
-      state.view = tabOrder[currentIdx + 1];
+      viewSource.view = tabOrder[currentIdx + 1];
       renderAll();
     }
   }, {passive: true});
