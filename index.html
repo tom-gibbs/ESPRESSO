@@ -1366,6 +1366,8 @@ html[data-theme="light"] .creatorBadge{
 /* Bottom nav cowork active state */
 .bottomNavBtn.coworkActive{color:rgba(180,150,230,1)}
 html[data-theme="light"] .bottomNavBtn.coworkActive{color:rgba(109,66,184,1)}
+button.coworkActive{color:rgba(180,150,230,1);border-color:rgba(147,112,219,.3);background:rgba(147,112,219,.12)}
+html[data-theme="light"] button.coworkActive{color:rgba(109,66,184,1);border-color:rgba(109,66,184,.2);background:rgba(109,66,184,.08)}
 
 /* =========================================================
    SWIPE GESTURES (mobile)
@@ -1720,6 +1722,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode">▤</button>
         <button id="themeToggle" class="subtle iconTopBtn" type="button">☀︎ / ☾</button>
         <button id="forceSaveBtn" class="accent iconTopBtn" type="button" title="Force save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+        <button id="coworkBtn" class="subtle iconTopBtn" type="button" title="Cowork Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
         <button id="focusBtn" class="primary iconTopBtn" type="button" title="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
         <button id="resetBtn" class="danger" type="button">Reset</button>
       </div>
@@ -5901,6 +5904,9 @@ function updateCoworkBottomNav(){
       btn.classList.add("coworkActive");
     }
   });
+  // Also highlight desktop topbar button
+  const cb = $("coworkBtn");
+  if(cb) cb.classList.toggle("coworkActive", isCoworkMode());
 }
 
 function renderAll(){
@@ -6820,6 +6826,7 @@ function closeCoworkModal(){
   document.body.style.overflow = "";
 }
 $("closeCoworkBtn").onclick = closeCoworkModal;
+$("coworkBtn").onclick = openCoworkModal;
 coworkOverlay.addEventListener("click", (e) => { if(e.target === coworkOverlay || e.target.classList.contains("coworkInner")) closeCoworkModal(); });
 
 function setCoworkStatus(msg, type=""){
