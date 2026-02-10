@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://content.googleapis.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://content.googleapis.com https://*.firebaseapp.com;">
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
 <link rel="manifest" href="manifest.json" />
@@ -13,6 +13,9 @@
 <meta name="theme-color" content="#d7b07a" />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
 /* =========================================================
@@ -2093,7 +2096,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   <div class="coworkInner">
     <div class="coworkBox" role="dialog" aria-modal="true" aria-label="Cowork Spaces">
       <h3>Cowork Spaces</h3>
-      <p id="coworkDescription">Share task lists with friends via Google Drive</p>
+      <p id="coworkDescription">Share task lists with friends</p>
 
       <div id="coworkStatusBox" class="coworkStatusBox" style="display:none"></div>
 
@@ -2300,6 +2303,13 @@ const COWORK_ACTIVE_DATA_KEY = "espresso_cowork_active_v2";
 const COWORK_SPACES_KEY = "espresso_cowork_spaces_v2";
 const COWORK_DRIVE_FILE_NAME = "espresso-cowork.json";   // legacy single-file name
 
+/* Firebase init */
+const firebaseConfig = { apiKey: "AIzaSyAkQwqLHSLdQp814D5ToxYqbOLPXv1Y6Iw", authDomain: "espresso-485923.firebaseapp.com", projectId: "espresso-485923" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn("Firestore persistence:", e.code));
+let firebaseUser = null;
+
 /* stable per-tab client id */
 const CLIENT_ID = (() => {
   const KEY = "espresso_client_id_v1";
@@ -2393,12 +2403,11 @@ const coworkState = {
   projectId: null,   // which project within the space
   data: null         // loaded cowork data or null
 };
-let coworkSpaces = [];  // space registry [{id, name, fileId, fileName}]
-let coworkPollTimer = null;
+let coworkSpaces = [];  // space registry [{id, name, firestoreId}]
+let coworkUnsubscribe = null;
 
 function isCoworkMode(){ return coworkState.active && coworkState.data; }
 function activeCoworkSpace(){ return coworkSpaces.find(s => s.id === coworkState.spaceId) || null; }
-function activeCoworkFileId(){ const s = activeCoworkSpace(); return s ? s.fileId : null; }
 
 function defaultCoworkProject(name){
   return {
@@ -2415,7 +2424,7 @@ function defaultCoworkProject(name){
 function defaultCoworkData(spaceName){
   const proj = defaultCoworkProject("Tasks");
   return {
-    meta: { rev: 0, created_by: null, members: [], spaceName: String(spaceName || "Cowork Space").trim() || "Cowork Space" },
+    meta: { rev: 0, created_by: null, members: [], memberEmails: [], spaceName: String(spaceName || "Cowork Space").trim() || "Cowork Space" },
     projects: { [proj.id]: proj },
     projectOrder: [proj.id]
   };
@@ -2438,6 +2447,7 @@ function fixCoworkData(d){
   d.meta.rev = Number(d.meta.rev || 0);
   if(!Array.isArray(d.meta.members)) d.meta.members = [];
   if(!d.meta.spaceName) d.meta.spaceName = "Cowork Space";
+  if(!Array.isArray(d.meta.memberEmails)) d.meta.memberEmails = (d.meta.members||[]).map(m=>m.email);
 
   // Migrate old single-project format to multi-project
   if(d.project && !d.projects){
@@ -6415,7 +6425,7 @@ $("forceSaveBtn").onclick = async ()=>{
    GOOGLE DRIVE SYNC
    ========================================================= */
 const GOOGLE_CLIENT_ID = '146120049361-nki2hqoh9ddn9i64g5hv4tbgeaq8p90p.apps.googleusercontent.com';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_FILE_NAME = 'espresso-state.json';
 
 let googleUser = null;
@@ -6562,7 +6572,7 @@ function maybeEnableSync(){
 
 let needsReconnect = false;
 
-function handleTokenResponse(resp){
+async function handleTokenResponse(resp){
   if(resp.error){
     console.log("Token error:", resp.error);
     if(resp.error === "interaction_required" || resp.error === "consent_required"){
@@ -6579,6 +6589,12 @@ function handleTokenResponse(resp){
   // Set the token on gapi client
   gapi.client.setToken({ access_token: resp.access_token });
   needsReconnect = false;
+  // Bridge to Firebase Auth
+  try {
+    const credential = firebase.auth.GoogleAuthProvider.credential(null, resp.access_token);
+    await firebase.auth().signInWithCredential(credential);
+    firebaseUser = firebase.auth().currentUser;
+  } catch(e){ console.warn("Firebase auth bridge error:", e); }
   // Token received, now fetch user info
   setSyncStatus("Signing in...", "");
   fetchUserInfo(resp.access_token);
@@ -6606,6 +6622,8 @@ async function fetchUserInfo(accessToken){
       } catch(e){
         setSyncStatus("Signed in, but sync failed: " + e.message, "error");
       }
+      // Migrate any old Drive-based cowork spaces to Firestore
+      migrateCoworkDriveToFirestore().catch(e => console.warn("Cowork migration:", e));
     } else {
       const errText = await resp.text();
       console.error("User info response:", resp.status, errText);
@@ -6647,6 +6665,7 @@ $("signOutBtn").onclick = () => {
     google.accounts.oauth2.revoke(token.access_token);
     gapi.client.setToken(null);
   }
+  firebase.auth().signOut().catch(()=>{}); firebaseUser = null;
   googleUser = null;
   try { localStorage.removeItem("espresso_google_user"); } catch(e){}
   updateSyncUI();
@@ -6824,147 +6843,22 @@ async function pushToDrive(){
 }
 
 /* =========================================================
-   COWORK DRIVE SYNC
+   COWORK FIRESTORE SYNC
    ========================================================= */
-async function findCoworkDriveFile(fileId, fileName){
-  if(!googleUser || !gapiInited) return null;
-  // Try cached file ID first
-  if(fileId){
-    try {
-      const resp = await gapi.client.drive.files.get({ fileId, fields: "id,name,trashed" });
-      if(resp.result && !resp.result.trashed) return resp.result;
-    } catch(e){ /* file ID stale, search instead */ }
-  }
-  // Search own files by name
-  const searchName = fileName || COWORK_DRIVE_FILE_NAME;
-  try {
-    const resp = await gapi.client.drive.files.list({
-      q: `name='${searchName}' and trashed=false`,
-      spaces: "drive",
-      fields: "files(id, name, modifiedTime)"
-    });
-    if(resp.result.files?.length) return resp.result.files[0];
-  } catch(e){}
-  // Search shared files by name
-  try {
-    const resp = await gapi.client.drive.files.list({
-      q: `name='${searchName}' and trashed=false and sharedWithMe=true`,
-      spaces: "drive",
-      fields: "files(id, name, modifiedTime)"
-    });
-    if(resp.result.files?.length) return resp.result.files[0];
-  } catch(e){}
-  return null;
-}
-
-async function findAllSharedCoworkFiles(){
-  if(!googleUser || !gapiInited) return [];
-  const results = [];
-  const knownIds = new Set(coworkSpaces.map(s => s.fileId));
-  // Search for any espresso-cowork-*.json shared with user
-  for(const sharedFlag of [false, true]){
-    try {
-      const q = sharedFlag
-        ? `name contains 'espresso-cowork' and trashed=false and sharedWithMe=true`
-        : `name contains 'espresso-cowork' and trashed=false`;
-      const resp = await gapi.client.drive.files.list({
-        q, spaces: "drive",
-        fields: "files(id, name, modifiedTime)"
-      });
-      if(resp.result.files){
-        for(const f of resp.result.files){
-          if(!knownIds.has(f.id)){
-            knownIds.add(f.id);
-            results.push(f);
-          }
-        }
-      }
-    } catch(e){}
-  }
-  return results;
-}
-
-async function pullCoworkFromDrive(space){
-  if(!googleUser || !gapiInited) return false;
-  const sp = space || activeCoworkSpace();
-  if(!sp) return false;
-  try {
-    const file = await findCoworkDriveFile(sp.fileId, sp.fileName);
-    if(!file){
-      console.warn("Cowork file not found for space:", sp.name);
-      return false;
-    }
-    // Update fileId if it changed (e.g. found by name search)
-    if(file.id !== sp.fileId){
-      sp.fileId = file.id;
-      saveCoworkSpaces();
-    }
-    const data = await readDriveFile(file.id);
-    if(!data) return false;
-    coworkState.data = fixCoworkData(data);
-    ensureCoworkMember();
-    saveCoworkLocal();
-    return true;
-  } catch(e){
-    console.error("Cowork pull error:", e);
-    return false;
-  }
-}
-
-async function pushCoworkToDrive(){
-  const fileId = activeCoworkFileId();
-  if(!googleUser || !gapiInited || !coworkState.data || !fileId) return;
-  coworkState.data.meta.rev = (coworkState.data.meta.rev || 0) + 1;
-  ensureCoworkMember();
-  const payload = { meta: coworkState.data.meta, projects: coworkState.data.projects, projectOrder: coworkState.data.projectOrder };
-  try {
-    await writeDriveFile(fileId, payload);
-    saveCoworkLocal();
-  } catch(e){
-    console.error("Cowork push error:", e);
-  }
-}
-
-async function createCoworkDriveFile(spaceName){
-  if(!googleUser || !gapiInited) return null;
+async function createCoworkSpace(spaceName){
+  if(!firebaseUser) return null;
   const name = String(spaceName || "Cowork Space").trim() || "Cowork Space";
   const data = defaultCoworkData(name);
   data.meta.created_by = { name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub };
   data.meta.members = [{ name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub }];
+  data.meta.memberEmails = [googleUser.email];
 
-  // Generate unique filename
-  const hex8 = Array.from(crypto.getRandomValues(new Uint8Array(4))).map(b=>b.toString(16).padStart(2,"0")).join("");
-  const fileName = `espresso-cowork-${hex8}.json`;
-
-  // Create the file on Drive
-  const boundary = "espresso_cowork_boundary";
-  const metadata = { name: fileName, mimeType: "application/json" };
   const payload = { meta: data.meta, projects: data.projects, projectOrder: data.projectOrder };
-  const body = [
-    `--${boundary}`,
-    "Content-Type: application/json; charset=UTF-8",
-    "",
-    JSON.stringify(metadata),
-    `--${boundary}`,
-    "Content-Type: application/json",
-    "",
-    JSON.stringify(payload),
-    `--${boundary}--`
-  ].join("\r\n");
-
-  const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${gapi.client.getToken().access_token}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`
-    },
-    body
-  });
-  if(!resp.ok) throw new Error("Failed to create cowork file");
-  const result = await resp.json();
+  const docRef = db.collection("coworkSpaces").doc();
+  await docRef.set(payload);
 
   // Register space
-  const spaceEntry = { id: uid(), name, fileId: result.id, fileName };
+  const spaceEntry = { id: uid(), name, firestoreId: docRef.id };
   coworkSpaces.push(spaceEntry);
   saveCoworkSpaces();
 
@@ -6974,6 +6868,59 @@ async function createCoworkDriveFile(spaceName){
   coworkState.projectId = data.projectOrder[0];
   saveCoworkLocal();
   return spaceEntry;
+}
+
+async function findAllSharedCoworkSpaces(){
+  if(!firebaseUser) return [];
+  const knownIds = new Set(coworkSpaces.map(s => s.firestoreId));
+  const results = [];
+  try {
+    const snap = await db.collection("coworkSpaces")
+      .where("meta.memberEmails", "array-contains", firebaseUser.email)
+      .get();
+    snap.forEach(doc => {
+      if(!knownIds.has(doc.id)){
+        knownIds.add(doc.id);
+        const d = doc.data();
+        results.push({ firestoreId: doc.id, name: d.meta?.spaceName || "Shared Space" });
+      }
+    });
+  } catch(e){ console.error("Find shared spaces error:", e); }
+  return results;
+}
+
+async function pullCoworkFromFirestore(space){
+  if(!firebaseUser) return false;
+  const sp = space || activeCoworkSpace();
+  if(!sp?.firestoreId) return false;
+  try {
+    const doc = await db.collection("coworkSpaces").doc(sp.firestoreId).get();
+    if(!doc.exists){
+      console.warn("Cowork doc not found for space:", sp.name);
+      return false;
+    }
+    coworkState.data = fixCoworkData(doc.data());
+    ensureCoworkMember();
+    saveCoworkLocal();
+    return true;
+  } catch(e){
+    console.error("Cowork pull error:", e);
+    return false;
+  }
+}
+
+async function pushCoworkToFirestore(){
+  const sp = activeCoworkSpace();
+  if(!firebaseUser || !coworkState.data || !sp?.firestoreId) return;
+  coworkState.data.meta.rev = (coworkState.data.meta.rev || 0) + 1;
+  ensureCoworkMember();
+  const payload = { meta: coworkState.data.meta, projects: coworkState.data.projects, projectOrder: coworkState.data.projectOrder };
+  try {
+    await db.collection("coworkSpaces").doc(sp.firestoreId).set(payload);
+    saveCoworkLocal();
+  } catch(e){
+    console.error("Cowork push error:", e);
+  }
 }
 
 function ensureCoworkMember(){
@@ -6987,6 +6934,7 @@ function ensureCoworkMember(){
     const m = members.find(m => m.email === googleUser.email);
     if(m){ m.name = googleUser.name; m.picture = googleUser.picture; }
   }
+  coworkState.data.meta.memberEmails = members.map(m => m.email);
 }
 
 /* Cowork project CRUD */
@@ -7025,30 +6973,61 @@ function switchCoworkProject(pid){
   renderAll();
 }
 
-function startCoworkPolling(){
-  stopCoworkPolling();
-  coworkPollTimer = setInterval(async () => {
-    if(!isCoworkMode() || !googleUser || !gapiInited) return;
-    try {
-      const pulled = await pullCoworkFromDrive();
-      if(pulled) renderAll();
-    } catch(e){
-      console.error("Cowork poll error:", e);
-    }
-  }, 15000);
+function startCoworkListener(){
+  stopCoworkListener();
+  const sp = activeCoworkSpace();
+  if(!sp?.firestoreId || !firebaseUser) return;
+  coworkUnsubscribe = db.collection("coworkSpaces").doc(sp.firestoreId)
+    .onSnapshot(doc => {
+      if(!doc.exists || !isCoworkMode()) return;
+      const remote = fixCoworkData(doc.data());
+      const localRev = coworkState.data?.meta?.rev || 0;
+      if(remote.meta.rev > localRev){
+        coworkState.data = remote;
+        ensureCoworkMember();
+        saveCoworkLocal();
+        renderAll();
+      }
+    }, err => console.error("Cowork listener error:", err));
 }
-function stopCoworkPolling(){
-  if(coworkPollTimer){ clearInterval(coworkPollTimer); coworkPollTimer = null; }
+
+function stopCoworkListener(){
+  if(coworkUnsubscribe){ coworkUnsubscribe(); coworkUnsubscribe = null; }
 }
 
 function queueCoworkSave(){
   saveCoworkLocal();
-  clearTimeout(window._coworkDriveSaveTimer);
-  window._coworkDriveSaveTimer = setTimeout(async () => {
-    if(googleUser && gapiInited && navigator.onLine){
-      try { await pushCoworkToDrive(); } catch(e){ console.error("Cowork drive push error:", e); }
+  clearTimeout(window._coworkSaveTimer);
+  window._coworkSaveTimer = setTimeout(async () => {
+    if(firebaseUser && navigator.onLine){
+      try { await pushCoworkToFirestore(); } catch(e){ console.error("Cowork push error:", e); }
     }
   }, 2000);
+}
+
+/* Auto-migrate old Drive-based cowork spaces to Firestore */
+async function migrateCoworkDriveToFirestore(){
+  if(!firebaseUser || !googleUser || !gapiInited) return;
+  const toMigrate = coworkSpaces.filter(s => s.fileId && !s.firestoreId && !s.migrated);
+  if(toMigrate.length === 0) return;
+  console.log("Migrating", toMigrate.length, "cowork space(s) from Drive to Firestore...");
+  for(const sp of toMigrate){
+    try {
+      const data = await readDriveFile(sp.fileId);
+      if(!data){ sp.migrated = true; continue; }
+      const fixed = fixCoworkData(data);
+      fixed.meta.memberEmails = (fixed.meta.members||[]).map(m=>m.email);
+      const payload = { meta: fixed.meta, projects: fixed.projects, projectOrder: fixed.projectOrder };
+      const docRef = db.collection("coworkSpaces").doc();
+      await docRef.set(payload);
+      sp.firestoreId = docRef.id;
+      sp.migrated = true;
+      console.log("Migrated space:", sp.name, "->", docRef.id);
+    } catch(e){
+      console.error("Migration failed for space:", sp.name, e);
+    }
+  }
+  saveCoworkSpaces();
 }
 
 // Rollover cowork done buckets (all projects in current space)
@@ -7100,8 +7079,8 @@ window.addEventListener("online", async () => {
     }
   }
   // Also push cowork data if in cowork mode
-  if(isCoworkMode() && googleUser && gapiInited){
-    try { await pushCoworkToDrive(); } catch(e){}
+  if(isCoworkMode() && firebaseUser){
+    try { await pushCoworkToFirestore(); } catch(e){}
   }
 });
 
@@ -7199,8 +7178,7 @@ function renderCoworkSpaceList(){
   coworkSpaces.forEach(sp => {
     const row = document.createElement("div");
     row.className = "coworkSpaceRow";
-    row.innerHTML = `<div class="coworkSpaceName">${escapeHtml(sp.name)}</div>
-      <div class="coworkSpaceMeta">${escapeHtml(sp.fileName || "")}</div>`;
+    row.innerHTML = `<div class="coworkSpaceName">${escapeHtml(sp.name)}</div>`;
     row.onclick = () => openCoworkSpaceDetail(sp.id);
     el.appendChild(row);
   });
@@ -7230,7 +7208,7 @@ function updateCoworkOverlayUI(){
 
   if(!inDetail){
     // Space list view
-    $("coworkDescription").textContent = "Share task lists with friends via Google Drive";
+    $("coworkDescription").textContent = "Share task lists with friends";
     renderCoworkSpaceList();
     return;
   }
@@ -7274,7 +7252,7 @@ $("coworkCreateBtn").onclick = async () => {
   btn.disabled = true;
   setCoworkStatus("Creating space...", "");
   try {
-    const sp = await createCoworkDriveFile(name.trim());
+    const sp = await createCoworkSpace(name.trim());
     if(sp){
       setCoworkStatus("Space created! Use Invite to share with a friend.", "success");
       openCoworkSpaceDetail(sp.id);
@@ -7289,24 +7267,17 @@ $("coworkCreateBtn").onclick = async () => {
 $("coworkJoinBtn").onclick = async () => {
   const btn = $("coworkJoinBtn");
   btn.disabled = true;
-  setCoworkStatus("Searching for shared cowork files...", "");
+  setCoworkStatus("Searching for shared spaces...", "");
   try {
-    const files = await findAllSharedCoworkFiles();
-    if(files.length === 0){
-      setCoworkStatus("No shared cowork files found. Ask a friend to invite you.", "error");
+    const found = await findAllSharedCoworkSpaces();
+    if(found.length === 0){
+      setCoworkStatus("No shared spaces found. Ask a friend to invite you.", "error");
       btn.disabled = false;
       return;
     }
-    // Add each found file as a space
     let added = 0;
-    for(const f of files){
-      // Read file to get space name
-      let spaceName = f.name.replace(/\.json$/, "").replace(/^espresso-cowork-?/, "") || "Shared Space";
-      try {
-        const data = await readDriveFile(f.id);
-        if(data?.meta?.spaceName) spaceName = data.meta.spaceName;
-      } catch(e){}
-      const entry = { id: uid(), name: spaceName, fileId: f.id, fileName: f.name };
+    for(const f of found){
+      const entry = { id: uid(), name: f.name, firestoreId: f.firestoreId };
       coworkSpaces.push(entry);
       added++;
     }
@@ -7328,11 +7299,11 @@ $("coworkEnterBtn").onclick = async () => {
   setCoworkStatus("Loading space data...", "");
   try {
     coworkState.spaceId = sp.id;
-    const pulled = await pullCoworkFromDrive(sp);
+    const pulled = await pullCoworkFromFirestore(sp);
     if(!pulled){
       // Try with just the space entry, data might be cached
       if(!coworkState.data){
-        setCoworkStatus("Could not load space data from Drive.", "error");
+        setCoworkStatus("Could not load space data.", "error");
         btn.disabled = false;
         return;
       }
@@ -7354,7 +7325,7 @@ $("coworkSyncBtn").onclick = async () => {
   setCoworkStatus("Syncing...", "");
   try {
     coworkState.spaceId = sp.id;
-    await pullCoworkFromDrive(sp);
+    await pullCoworkFromFirestore(sp);
     setCoworkStatus("Synced!", "success");
     updateCoworkOverlayUI();
     if(isCoworkMode()) renderAll();
@@ -7385,23 +7356,24 @@ $("coworkLeaveBtn").onclick = () => {
 // Invite
 $("coworkInviteBtn").onclick = async () => {
   const sp = coworkSpaces.find(s => s.id === _coworkDetailSpaceId);
-  if(!sp) return;
+  if(!sp?.firestoreId) return;
   const emailInput = $("coworkInviteEmail");
   const email = emailInput.value.trim();
   if(!email || !email.includes("@")){ setCoworkStatus("Enter a valid email address", "error"); return; }
   const btn = $("coworkInviteBtn");
   btn.disabled = true;
-  setCoworkStatus("Sending invite...", "");
+  setCoworkStatus("Adding member...", "");
   try {
-    await gapi.client.drive.permissions.create({
-      fileId: sp.fileId,
-      resource: { type: "user", role: "writer", emailAddress: email },
-      sendNotificationEmail: true
+    await db.collection("coworkSpaces").doc(sp.firestoreId).update({
+      "meta.memberEmails": firebase.firestore.FieldValue.arrayUnion(email),
+      "meta.members": firebase.firestore.FieldValue.arrayUnion({
+        name: email.split("@")[0], email, picture: "", sub: ""
+      })
     });
     emailInput.value = "";
-    setCoworkStatus(`Invited ${email}!`, "success");
+    setCoworkStatus(`Added ${email}! They can find this space via "Find Shared Spaces".`, "success");
   } catch(e){
-    const msg = e?.result?.error?.message || e.message || "Invite failed";
+    const msg = e?.message || "Invite failed";
     setCoworkStatus(msg, "error");
   }
   btn.disabled = false;
@@ -7419,14 +7391,14 @@ function enterCoworkMode(spaceId){
   }
   coworkState.active = true;
   coworkState.view = "active";
-  startCoworkPolling();
+  startCoworkListener();
   renderAll();
   updateCoworkBottomNav();
 }
 
 function exitCoworkMode(){
   coworkState.active = false;
-  stopCoworkPolling();
+  stopCoworkListener();
   // Remove cowork highlight
   qsa(".bottomNavBtn").forEach(btn => btn.classList.remove("coworkActive"));
   renderAll();
@@ -7436,7 +7408,7 @@ function exitCoworkMode(){
 const _origSignOutClick = $("signOutBtn").onclick;
 $("signOutBtn").onclick = () => {
   exitCoworkMode();
-  stopCoworkPolling();
+  stopCoworkListener();
   _origSignOutClick();
 };
 
