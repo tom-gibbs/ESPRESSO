@@ -1296,6 +1296,30 @@ html[data-theme="light"] .coworkMemberRow{background:rgba(255,255,255,.92)}
 .coworkMemberRow img{width:32px;height:32px;border-radius:999px;border:1px solid var(--line)}
 .coworkMemberName{font-weight:700;font-size:14px}
 .coworkMemberEmail{font-size:12px;color:var(--muted)}
+.coworkMemberRemove{
+  margin-left:auto;
+  width:28px;height:28px;border-radius:999px;
+  border:1px solid rgba(239,68,68,.25);
+  background:rgba(239,68,68,.08);
+  color:#ef4444;
+  font-size:16px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.coworkMemberRemove:hover{background:rgba(239,68,68,.18)}
+.coworkDeleteSection{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.coworkDeleteSection button{
+  padding:8px 16px;border-radius:10px;
+  font-size:13px;font-weight:700;
+  background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.25);
+  color:#ef4444;cursor:pointer;
+}
+.coworkDeleteSection button:hover{background:rgba(239,68,68,.20)}
+.coworkSpaceDetailName[contenteditable="true"]{
+  outline:none;
+  border-bottom:2px dashed rgba(147,112,219,.4);
+  cursor:text;
+}
 .coworkStatusBox{
   font-size:13px;color:var(--muted);
   padding:12px;border-radius:12px;
@@ -2129,6 +2153,9 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <button id="coworkEnterBtn" class="primary" type="button">Enter Space</button>
           <button id="coworkSyncBtn" class="subtle" type="button">Sync Now</button>
           <button id="coworkLeaveBtn" class="danger" type="button">Leave Space</button>
+        </div>
+        <div id="coworkDeleteSection" class="coworkDeleteSection" style="display:none">
+          <button id="coworkDeleteSpaceBtn" type="button">Delete Space Permanently</button>
         </div>
       </div>
 
@@ -6372,7 +6399,7 @@ $("forceSaveBtn").onclick = async ()=>{
       setStatus("Syncing to Drive…");
       try {
         await pushToDrive();
-        setStatus("Saved & synced to Drive");
+        setStatus("Saved & synced");
         clearPendingSync();
       } catch(e){
         console.error("Drive sync error:", e);
@@ -6721,7 +6748,7 @@ $("refreshDriveBtn").onclick = () => {
       try {
         await pushToDrive();
         clearPendingSync();
-        setStatus("Synced to Drive");
+        setStatus("Synced");
         updateSyncUI();
       } catch(e){
         setStatus("Sync failed: " + e.message);
@@ -7073,7 +7100,7 @@ window.addEventListener("online", async () => {
     try {
       await pushToDrive();
       clearPendingSync();
-      setStatus("Synced to Drive");
+      setStatus("Synced");
     } catch(e){
       console.error("Online sync failed:", e);
     }
@@ -7146,6 +7173,7 @@ $("syncOverlay").addEventListener("click", (e) => {
    ========================================================= */
 const coworkOverlay = $("coworkOverlay");
 let _coworkDetailSpaceId = null; // which space is shown in detail view
+let _coworkDetailData = null; // fetched Firestore data for detail view
 
 function openCoworkModal(){
   _coworkDetailSpaceId = null;
@@ -7184,12 +7212,30 @@ function renderCoworkSpaceList(){
   });
 }
 
-function openCoworkSpaceDetail(spaceId){
+async function openCoworkSpaceDetail(spaceId){
   _coworkDetailSpaceId = spaceId;
+  _coworkDetailData = null;
   updateCoworkOverlayUI();
+  // Fetch latest data from Firestore for this space
+  const sp = coworkSpaces.find(s => s.id === spaceId);
+  if(sp?.firestoreId && firebaseUser){
+    try {
+      const doc = await db.collection("coworkSpaces").doc(sp.firestoreId).get();
+      if(doc.exists && _coworkDetailSpaceId === spaceId){
+        _coworkDetailData = doc.data();
+        // Also update coworkState if this is the active space
+        if(coworkState.spaceId === spaceId){
+          coworkState.data = fixCoworkData(_coworkDetailData);
+          saveCoworkLocal();
+        }
+        updateCoworkOverlayUI();
+      }
+    } catch(e){ console.warn("Could not fetch space detail:", e); }
+  }
 }
 function closeCoworkSpaceDetail(){
   _coworkDetailSpaceId = null;
+  _coworkDetailData = null;
   updateCoworkOverlayUI();
 }
 
@@ -7218,19 +7264,111 @@ function updateCoworkOverlayUI(){
   if(!sp){ closeCoworkSpaceDetail(); return; }
 
   $("coworkDescription").textContent = "";
-  $("coworkSpaceDetailName").textContent = sp.name;
+  const nameEl = $("coworkSpaceDetailName");
+  nameEl.textContent = sp.name;
+
+  // Use fetched detail data, or fall back to active cowork state
+  const spaceData = _coworkDetailData || (coworkState.spaceId === sp.id ? coworkState.data : null);
+
+  // Determine if current user is owner
+  const isOwner = !!spaceData && spaceData.meta?.created_by?.email === googleUser?.email;
+
+  // Make name editable for owner
+  if(isOwner){
+    nameEl.style.cursor = "pointer";
+    nameEl.title = "Click to rename";
+    nameEl.onclick = () => {
+      nameEl.contentEditable = "true";
+      nameEl.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(nameEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    const commitRename = async () => {
+      nameEl.contentEditable = "false";
+      const newName = nameEl.textContent.trim();
+      if(newName && newName !== sp.name){
+        sp.name = newName;
+        saveCoworkSpaces();
+        // Update Firestore directly
+        if(sp.firestoreId){
+          try {
+            await db.collection("coworkSpaces").doc(sp.firestoreId).update({ "meta.spaceName": newName });
+          } catch(e){ console.warn("Rename sync failed:", e); }
+        }
+        if(spaceData?.meta) spaceData.meta.spaceName = newName;
+        if(coworkState.spaceId === sp.id && coworkState.data?.meta){
+          coworkState.data.meta.spaceName = newName;
+          saveCoworkLocal();
+        }
+      } else {
+        nameEl.textContent = sp.name;
+      }
+    };
+    nameEl.onblur = commitRename;
+    nameEl.onkeydown = (e) => {
+      if(e.key === "Enter"){ e.preventDefault(); nameEl.blur(); }
+      if(e.key === "Escape"){ nameEl.textContent = sp.name; nameEl.contentEditable = "false"; }
+    };
+  } else {
+    nameEl.style.cursor = "";
+    nameEl.title = "";
+    nameEl.onclick = null;
+    nameEl.onblur = null;
+    nameEl.onkeydown = null;
+    nameEl.contentEditable = "false";
+  }
 
   // Load data for this space if needed
   const membersEl = $("coworkMembers");
-  if(coworkState.data && coworkState.spaceId === sp.id && coworkState.data.meta?.members?.length){
+  if(spaceData?.meta?.members?.length){
     membersEl.style.display = "";
     membersEl.innerHTML = "";
-    coworkState.data.meta.members.forEach(m => {
+    spaceData.meta.members.forEach(m => {
       const row = document.createElement("div");
       row.className = "coworkMemberRow";
       row.innerHTML = `<img src="${escapeHtml(m.picture || "")}" alt="">
         <div><div class="coworkMemberName">${escapeHtml(m.name || "Unknown")}</div>
         <div class="coworkMemberEmail">${escapeHtml(m.email || "")}</div></div>`;
+      // Remove button (owner only, not for self)
+      if(isOwner && m.email !== googleUser?.email){
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "coworkMemberRemove";
+        removeBtn.innerHTML = "&times;";
+        removeBtn.title = "Remove member";
+        removeBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if(!confirm(`Remove ${m.name || m.email} from this space?`)) return;
+          removeBtn.disabled = true;
+          try {
+            // Read-modify-write to avoid fragile arrayRemove with objects
+            const newMembers = (spaceData.meta.members || []).filter(x => x.email !== m.email);
+            const newEmails = (spaceData.meta.memberEmails || []).filter(x => x !== m.email);
+            await db.collection("coworkSpaces").doc(sp.firestoreId).update({
+              "meta.memberEmails": newEmails,
+              "meta.members": newMembers
+            });
+            // Update local state
+            spaceData.meta.members = newMembers;
+            spaceData.meta.memberEmails = newEmails;
+            if(_coworkDetailData) _coworkDetailData = spaceData;
+            if(coworkState.spaceId === sp.id && coworkState.data){
+              coworkState.data.meta.members = newMembers;
+              coworkState.data.meta.memberEmails = newEmails;
+              saveCoworkLocal();
+            }
+            setCoworkStatus(`Removed ${m.name || m.email}`, "success");
+            updateCoworkOverlayUI();
+          } catch(err){
+            setCoworkStatus("Failed to remove member: " + err.message, "error");
+            removeBtn.disabled = false;
+          }
+        };
+        row.appendChild(removeBtn);
+      }
       membersEl.appendChild(row);
     });
   } else {
@@ -7239,6 +7377,9 @@ function updateCoworkOverlayUI(){
 
   // Show invite section if signed in
   $("coworkInviteSection").style.display = signedIn ? "" : "none";
+
+  // Show delete section for owner only
+  $("coworkDeleteSection").style.display = isOwner ? "" : "none";
 }
 
 // Back button
@@ -7326,6 +7467,8 @@ $("coworkSyncBtn").onclick = async () => {
   try {
     coworkState.spaceId = sp.id;
     await pullCoworkFromFirestore(sp);
+    // Also refresh detail data
+    if(coworkState.data) _coworkDetailData = JSON.parse(JSON.stringify(coworkState.data));
     setCoworkStatus("Synced!", "success");
     updateCoworkOverlayUI();
     if(isCoworkMode()) renderAll();
@@ -7364,19 +7507,62 @@ $("coworkInviteBtn").onclick = async () => {
   btn.disabled = true;
   setCoworkStatus("Adding member...", "");
   try {
+    const newMember = { name: email.split("@")[0], email, picture: "", sub: "" };
     await db.collection("coworkSpaces").doc(sp.firestoreId).update({
       "meta.memberEmails": firebase.firestore.FieldValue.arrayUnion(email),
-      "meta.members": firebase.firestore.FieldValue.arrayUnion({
-        name: email.split("@")[0], email, picture: "", sub: ""
-      })
+      "meta.members": firebase.firestore.FieldValue.arrayUnion(newMember)
     });
+    // Update local data so UI reflects the new member
+    if(_coworkDetailData?.meta){
+      if(!_coworkDetailData.meta.memberEmails?.includes(email)){
+        _coworkDetailData.meta.memberEmails = [...(_coworkDetailData.meta.memberEmails || []), email];
+        _coworkDetailData.meta.members = [...(_coworkDetailData.meta.members || []), newMember];
+      }
+    }
+    if(coworkState.spaceId === sp.id && coworkState.data?.meta){
+      if(!coworkState.data.meta.memberEmails?.includes(email)){
+        coworkState.data.meta.memberEmails = [...(coworkState.data.meta.memberEmails || []), email];
+        coworkState.data.meta.members = [...(coworkState.data.meta.members || []), newMember];
+        saveCoworkLocal();
+      }
+    }
     emailInput.value = "";
     setCoworkStatus(`Added ${email}! They can find this space via "Find Shared Spaces".`, "success");
+    updateCoworkOverlayUI();
   } catch(e){
     const msg = e?.message || "Invite failed";
     setCoworkStatus(msg, "error");
   }
   btn.disabled = false;
+};
+
+// Delete space (owner only)
+$("coworkDeleteSpaceBtn").onclick = async () => {
+  const sp = coworkSpaces.find(s => s.id === _coworkDetailSpaceId);
+  if(!sp?.firestoreId) return;
+  if(!confirm(`Delete "${sp.name}"? This cannot be undone.`)) return;
+  if(!confirm(`Are you absolutely sure? All data in "${sp.name}" will be permanently deleted for everyone.`)) return;
+  const btn = $("coworkDeleteSpaceBtn");
+  btn.disabled = true;
+  setCoworkStatus("Deleting space...", "");
+  try {
+    await db.collection("coworkSpaces").doc(sp.firestoreId).delete();
+    // Clean up local state
+    if(isCoworkMode() && coworkState.spaceId === sp.id) exitCoworkMode();
+    coworkSpaces = coworkSpaces.filter(s => s.id !== sp.id);
+    saveCoworkSpaces();
+    if(coworkState.spaceId === sp.id){
+      coworkState.data = null;
+      coworkState.spaceId = null;
+      coworkState.projectId = null;
+      try { localStorage.removeItem(COWORK_ACTIVE_DATA_KEY); } catch(e){}
+    }
+    setCoworkStatus("Space deleted", "success");
+    closeCoworkSpaceDetail();
+  } catch(e){
+    setCoworkStatus("Failed to delete space: " + e.message, "error");
+    btn.disabled = false;
+  }
 };
 
 function enterCoworkMode(spaceId){
