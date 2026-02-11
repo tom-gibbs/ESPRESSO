@@ -3604,7 +3604,7 @@ function clearDependencyHighlights(){
     li.classList.remove("dep-selected", "dep-upstream", "dep-downstream", "dep-faded");
   });
 }
-linkOverlay.addEventListener("click",(e)=>{ if(e.target===linkOverlay) closeLinkModal(); });
+linkOverlay.addEventListener("click",(e)=>{ if(e.target===linkOverlay || e.target.classList.contains("modalInner")) closeLinkModal(); });
 $("linkCancel").onclick = closeLinkModal;
 
 /* =========================================================
@@ -6471,7 +6471,7 @@ function closeSyncModal(){
 }
 $("syncBtn").onclick = openSyncModal;
 $("closeSyncBtn").onclick = closeSyncModal;
-syncOverlay.addEventListener("click", (e) => { if(e.target === syncOverlay) closeSyncModal(); });
+syncOverlay.addEventListener("click", (e) => { if(e.target === syncOverlay || e.target.classList.contains("syncInner")) closeSyncModal(); });
 
 /* =========================================================
    SHORTCUTS OVERLAY
@@ -6488,7 +6488,7 @@ function closeShortcuts(){
 }
 $("shortcutsBtn").onclick = openShortcuts;
 $("shortcutsClose").onclick = closeShortcuts;
-shortcutsOverlay.addEventListener("click", (e) => { if(e.target === shortcutsOverlay) closeShortcuts(); });
+shortcutsOverlay.addEventListener("click", (e) => { if(e.target === shortcutsOverlay || e.target.classList.contains("modalInner")) closeShortcuts(); });
 
 function updateSyncUI(){
   const signedIn = !!firebaseUser;
