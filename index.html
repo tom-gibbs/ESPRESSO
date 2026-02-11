@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://*.firebaseapp.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://*.firebaseapp.com;">
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
 <link rel="manifest" href="manifest.json" />
@@ -16,6 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <style>
 /* =========================================================
@@ -1132,6 +1133,29 @@ html[data-theme="light"] .focusNotes{ background: rgba(255,255,255,.92); }
   resize:vertical;
 }
 html[data-theme="light"] .focusNotesBox{ background: rgba(255,255,255,.92); color: var(--text); }
+.focusNotesRendered{
+  margin-top:10px;padding:12px;border-radius:14px;
+  border:1px solid var(--line);background:rgba(0,0,0,.12);
+  color:var(--text);font-size:14px;line-height:1.5;
+  min-height:40px;cursor:text;word-wrap:break-word;
+}
+html[data-theme="light"] .focusNotesRendered{background:rgba(255,255,255,.92)}
+.focusNotesRendered h1,.focusNotesRendered h2,.focusNotesRendered h3{margin:8px 0 4px;font-weight:700}
+.focusNotesRendered h1{font-size:18px}
+.focusNotesRendered h2{font-size:16px}
+.focusNotesRendered h3{font-size:15px}
+.focusNotesRendered p{margin:4px 0}
+.focusNotesRendered ul,.focusNotesRendered ol{margin:4px 0;padding-left:20px}
+.focusNotesRendered li{margin:2px 0}
+.focusNotesRendered code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-size:13px;font-family:ui-monospace,monospace}
+html[data-theme="light"] .focusNotesRendered code{background:rgba(0,0,0,.06)}
+.focusNotesRendered pre{background:rgba(0,0,0,.2);padding:10px;border-radius:10px;overflow-x:auto;margin:6px 0}
+html[data-theme="light"] .focusNotesRendered pre{background:rgba(0,0,0,.04)}
+.focusNotesRendered pre code{background:none;padding:0}
+.focusNotesRendered blockquote{border-left:3px solid var(--accent);margin:6px 0;padding:4px 12px;color:var(--muted)}
+.focusNotesRendered a{color:var(--accent);text-decoration:underline}
+.focusNotesRendered input[type="checkbox"]{margin-right:6px;width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+.focusNotesRendered li.task-list-item{list-style:none;margin-left:-20px}
 
 .focusBtns{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
 .focusBtns .spacer{flex:1}
@@ -1296,6 +1320,12 @@ html[data-theme="light"] .coworkMemberRow{background:rgba(255,255,255,.92)}
 .coworkMemberRow img{width:32px;height:32px;border-radius:999px;border:1px solid var(--line)}
 .coworkMemberName{font-weight:700;font-size:14px}
 .coworkMemberEmail{font-size:12px;color:var(--muted)}
+.presenceDot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.presenceDot.online{background:#4ade80}
+.presenceDot.away{background:#facc15}
+.presenceDot.offline{background:rgba(255,255,255,.15)}
+html[data-theme="light"] .presenceDot.offline{background:rgba(0,0,0,.12)}
+.presenceText{font-size:11px;color:var(--muted);white-space:nowrap}
 .coworkMemberRemove{
   margin-left:auto;
   width:28px;height:28px;border-radius:999px;
@@ -1731,6 +1761,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .focusNotes{margin-top:12px;padding:10px;border-radius:14px}
   .focusNotesTitle{font-size:11px}
   .focusNotesBox{margin-top:8px;padding:10px;min-height:100px;border-radius:12px}
+  .focusNotesRendered{margin-top:8px;padding:10px;min-height:30px;border-radius:12px}
   .focusBtns{gap:8px;margin-top:14px}
   .focusBtns button{padding:8px 12px;font-size:12px}
 
@@ -2063,6 +2094,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
             Notes
           </div>
           <textarea id="focusNotesBox" class="focusNotesBox" placeholder="Add notes…"></textarea>
+          <div id="focusNotesRendered" class="focusNotesRendered" style="display:none;"></div>
         </div>
 
         <div class="focusSub" style="margin-top:12px;">
@@ -2236,6 +2268,7 @@ function initTheme(){
 $("themeToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-theme");
   applyTheme(cur === "dark" ? "light" : "dark");
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 function applyCompact(compact){
@@ -2252,6 +2285,7 @@ function initCompact(){
 $("compactToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-compact");
   applyCompact(cur !== "true");
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 /* =========================================================
@@ -4180,14 +4214,66 @@ $("unlinkBtn").onclick = ()=>{
   closeLinkModal();
 };
 
-/* notes (focus-only) */
+/* notes (focus-only) with markdown preview */
 let focusNotesTaskKey = null;
+
+function renderNotesMarkdown(raw){
+  if(typeof marked === "undefined") return escapeHtml(raw).replace(/\n/g, "<br>");
+  const html = marked.parse(raw);
+  // Strip dangerous tags for safety (especially in cowork mode)
+  return html.replace(/<(script|iframe|object|embed|form)[^>]*>[\s\S]*?<\/\1>/gi, "")
+             .replace(/<(script|iframe|object|embed|form)[^>]*\/?>/gi, "");
+}
+
+function showNotesPreview(){
+  const box = $("focusNotesBox");
+  const preview = $("focusNotesRendered");
+  const raw = box.value.trim();
+  if(!raw){
+    box.style.display = "";
+    preview.style.display = "none";
+    return;
+  }
+  box.style.display = "none";
+  preview.style.display = "";
+  preview.innerHTML = renderNotesMarkdown(raw);
+  // Make checkboxes interactive
+  const checkboxes = preview.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach((cb, i) => {
+    cb.onclick = (e) => {
+      e.preventDefault();
+      if(!focusNotesTaskKey) return;
+      const task = getTaskByKey(focusNotesTaskKey);
+      if(!task) return;
+      let count = 0;
+      task.notes = (task.notes || "").replace(/- \[([ xX])\]/g, (match, check) => {
+        if(count++ === i) return check.trim() ? "- [ ]" : "- [x]";
+        return match;
+      });
+      box.value = task.notes;
+      if(isCoworkMode()){ queueCoworkSave(); } else { queueSave(); }
+      preview.innerHTML = renderNotesMarkdown(task.notes);
+      showNotesPreview(); // re-bind checkboxes
+    };
+  });
+}
+
+function showNotesEditor(){
+  $("focusNotesRendered").style.display = "none";
+  const box = $("focusNotesBox");
+  box.style.display = "";
+  box.focus();
+}
+
 function showFocusNotesForTask(task){
   const boxWrap = $("focusNotes");
   const box = $("focusNotesBox");
+  const preview = $("focusNotesRendered");
   if(!task){
     boxWrap.style.display = "none";
     box.value = "";
+    preview.style.display = "none";
+    preview.innerHTML = "";
     focusNotesTaskKey = null;
     return;
   }
@@ -4195,17 +4281,32 @@ function showFocusNotesForTask(task){
   focusNotesTaskKey = tKey;
   boxWrap.style.display = "";
   box.value = task.notes || "";
-  // Use a single handler that checks the current task key
-  box.onblur = ()=>{
-    // Only save if this is still the same task we're editing
+
+  // Show preview if notes exist, otherwise show editor
+  if((task.notes || "").trim()){
+    showNotesPreview();
+  } else {
+    box.style.display = "";
+    preview.style.display = "none";
+  }
+
+  // Click preview to edit (but not on checkboxes or links)
+  preview.onclick = (e) => {
+    if(e.target.tagName === "INPUT" || e.target.tagName === "A") return;
+    showNotesEditor();
+  };
+
+  // On blur, save and show preview
+  box.onblur = () => {
     if(focusNotesTaskKey !== tKey) return;
     const currentTask = getTaskByKey(tKey);
     if(!currentTask) return;
     const v = String(box.value || "");
     if(currentTask.notes !== v){
       currentTask.notes = v;
-      queueSave();
+      if(isCoworkMode()){ queueCoworkSave(); } else { queueSave(); }
     }
+    if(v.trim()) showNotesPreview();
   };
 }
 
@@ -6419,6 +6520,7 @@ $("forceSaveBtn").onclick = async ()=>{
 (async function init(){
   initTheme();
   initCompact();
+  if(typeof marked !== "undefined") marked.setOptions({ gfm: true, breaks: true });
   loadViewState();
 
   qsa(".summaryTab").forEach(b=>b.classList.toggle("active", b.dataset.view===state.view));
@@ -6893,6 +6995,23 @@ function startCoworkListener(){
 
 function stopCoworkListener(){
   if(coworkUnsubscribe){ coworkUnsubscribe(); coworkUnsubscribe = null; }
+  stopCoworkPresence();
+}
+
+/* Cowork presence heartbeat */
+let coworkPresenceInterval = null;
+function startCoworkPresence(){
+  stopCoworkPresence();
+  const sp = activeCoworkSpace();
+  if(!sp || !googleUser) return;
+  const key = googleUser.sub || googleUser.email.replace(/\./g,"_");
+  const ref = db.collection("coworkSpaces").doc(sp.firestoreId);
+  const send = () => ref.update({ ["presence." + key]: Date.now() }).catch(()=>{});
+  send();
+  coworkPresenceInterval = setInterval(send, 30000);
+}
+function stopCoworkPresence(){
+  if(coworkPresenceInterval){ clearInterval(coworkPresenceInterval); coworkPresenceInterval = null; }
 }
 
 function queueCoworkSave(){
@@ -6931,7 +7050,11 @@ async function pushPersonalToFirestore(){
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
     globalOrder: state.data.globalOrder || {},
-    currentProject: state.data.currentProject || state.data.projectOrder?.[0] || "default"
+    currentProject: state.data.currentProject || state.data.projectOrder?.[0] || "default",
+    settings: {
+      theme: localStorage.getItem(THEME_KEY) || "light",
+      compact: localStorage.getItem(COMPACT_KEY) === "true"
+    }
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
 }
@@ -6950,6 +7073,12 @@ async function pullPersonalFromFirestore(){
       enforceDependenciesAllProjects();
       try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
       renderAll();
+    }
+    // Apply synced settings regardless of rev
+    const rs = doc.data().settings;
+    if(rs){
+      applyTheme(rs.theme || "light");
+      applyCompact(!!rs.compact);
     }
     return true;
   } catch(e){
@@ -6972,6 +7101,12 @@ function startPersonalListener(){
         rolloverDoneBuckets();
         enforceDependenciesAllProjects();
         try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+        // Apply synced settings
+        const rs = doc.data().settings;
+        if(rs){
+          applyTheme(rs.theme || "light");
+          applyCompact(!!rs.compact);
+        }
         renderAll();
       }
     }, err => console.error("Personal listener error:", err));
@@ -7239,12 +7374,23 @@ function updateCoworkOverlayUI(){
   if(spaceData?.meta?.members?.length){
     membersEl.style.display = "";
     membersEl.innerHTML = "";
+    const presence = spaceData.presence || {};
     spaceData.meta.members.forEach(m => {
       const row = document.createElement("div");
       row.className = "coworkMemberRow";
-      row.innerHTML = `<img src="${escapeHtml(m.picture || "")}" alt="">
+      // Presence status
+      const mKey = m.sub || m.email.replace(/\./g,"_");
+      const lastSeen = presence[mKey] || 0;
+      const ago = Date.now() - lastSeen;
+      const isOnline = ago < 60000;
+      const isAway = !isOnline && ago < 600000;
+      const dotClass = isOnline ? "online" : isAway ? "away" : "offline";
+      const presenceLabel = isOnline ? "Online" : isAway ? `${Math.ceil(ago/60000)}m ago` : "";
+      row.innerHTML = `<span class="presenceDot ${dotClass}"></span>
+        <img src="${escapeHtml(m.picture || "")}" alt="">
         <div><div class="coworkMemberName">${escapeHtml(m.name || "Unknown")}</div>
-        <div class="coworkMemberEmail">${escapeHtml(m.email || "")}</div></div>`;
+        <div class="coworkMemberEmail">${escapeHtml(m.email || "")}</div></div>
+        ${presenceLabel ? `<span class="presenceText">${presenceLabel}</span>` : ""}`;
       // Remove button (owner only, not for self)
       if(isOwner && m.email !== googleUser?.email){
         const removeBtn = document.createElement("button");
@@ -7490,12 +7636,14 @@ function enterCoworkMode(spaceId){
   coworkState.active = true;
   coworkState.view = "active";
   startCoworkListener();
+  startCoworkPresence();
   renderAll();
   updateCoworkBottomNav();
 }
 
 function exitCoworkMode(){
   coworkState.active = false;
+  stopCoworkPresence();
   stopCoworkListener();
   // Remove cowork highlight
   qsa(".bottomNavBtn").forEach(btn => btn.classList.remove("coworkActive"));
