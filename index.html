@@ -2957,7 +2957,7 @@ function makePayload(){
 function queueSave(){
   setStatus("Saving…");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>saveNow({silent:true}).catch(()=>{}), 220);
+  saveTimer = setTimeout(()=>saveNow({silent:true}).then(()=>setSavedStatusFromLast()).catch(()=>{}), 220);
 }
 
 async function saveNow({silent=false, force=false}={}){
@@ -5805,15 +5805,10 @@ function fmt(ms){
   return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 function updateHeaderTimer(){
-  if(timerRunning || timerRemainingMs>0){
+  if(timerRunning){
     timerHeader.style.display="inline-flex";
-    const timeStr = timerRunning
-      ? fmt(Math.max(0, timerEndMs-Date.now()))
-      : fmt(timerRemainingMs);
-    timerHeader.textContent = timerRunning
-      ? `Timer ${timeStr}`
-      : `Paused ${timeStr}`;
-    // Update page title with timer
+    const timeStr = fmt(Math.max(0, timerEndMs-Date.now()));
+    timerHeader.textContent = `Timer ${timeStr}`;
     document.title = `${timeStr} - ESPRESSO`;
   }else{
     timerHeader.style.display="none";
@@ -6399,13 +6394,13 @@ $("forceSaveBtn").onclick = async ()=>{
       setStatus("Syncing…");
       try {
         await pushPersonalToFirestore();
-        setStatus("Saved & synced");
+        setStatus("Synced " + fmtSaved(Math.floor(Date.now()/1000)));
       } catch(e){
         console.error("Firestore sync error:", e);
         setStatus("Saved locally (sync failed)");
       }
     } else {
-      setStatus("Saved");
+      setStatus("Saved " + fmtSaved(Math.floor(Date.now()/1000)));
     }
 
     renderAll();
@@ -7044,7 +7039,12 @@ queueSave = function(){
   clearTimeout(window._firestoreSaveTimer);
   window._firestoreSaveTimer = setTimeout(async () => {
     if(firebaseUser){
-      try { await pushPersonalToFirestore(); } catch(e){ console.error("Firestore push error:", e); }
+      try {
+        await pushPersonalToFirestore();
+        setStatus("Synced " + fmtSaved(Math.floor(Date.now()/1000)));
+      } catch(e){
+        console.error("Firestore push error:", e);
+      }
     }
   }, 2000);
 };
