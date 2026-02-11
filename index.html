@@ -6935,7 +6935,8 @@ async function pushPersonalToFirestore(){
     meta: state.data.meta,
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
-    globalOrder: state.data.globalOrder || {}
+    globalOrder: state.data.globalOrder || {},
+    currentProject: state.data.currentProject || state.data.projectOrder?.[0] || "default"
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
 }
@@ -6983,6 +6984,16 @@ function startPersonalListener(){
 function stopPersonalListener(){
   if(personalUnsubscribe){ personalUnsubscribe(); personalUnsubscribe = null; }
 }
+
+// Restore Firebase Auth session on page reload
+firebase.auth().onAuthStateChanged(user => {
+  firebaseUser = user;
+  if(user && !personalUnsubscribe){
+    startPersonalListener();
+    pullPersonalFromFirestore().catch(e => console.error("Auto-pull error:", e));
+  }
+  updateSyncUI();
+});
 
 // One-time migration from Google Drive to Firestore
 async function migratePersonalDriveToFirestore(accessToken){
