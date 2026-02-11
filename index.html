@@ -6986,8 +6986,16 @@ function stopPersonalListener(){
 
 // One-time migration from Google Drive to Firestore
 async function migratePersonalDriveToFirestore(accessToken){
+  // Mark as done immediately to prevent re-running on reload
   if(localStorage.getItem("espresso_drive_migrated")) return;
-  if(typeof gapi === "undefined") { localStorage.setItem("espresso_drive_migrated", "1"); return; }
+  localStorage.setItem("espresso_drive_migrated", "1");
+  // Only migrate if Firestore has no data yet (first-time setup)
+  if(!firebaseUser) return;
+  try {
+    const existing = await db.collection("personalData").doc(firebaseUser.uid).get();
+    if(existing.exists) return; // Firestore already has data, skip
+  } catch(e){ return; }
+  if(typeof gapi === "undefined") return;
   try {
     gapi.load("client", async () => {
       try {
@@ -6995,20 +7003,16 @@ async function migratePersonalDriveToFirestore(accessToken){
         await gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
         gapi.client.setToken({ access_token: accessToken });
         const file = await findDriveFile();
-        if(!file){ localStorage.setItem("espresso_drive_migrated", "1"); return; }
+        if(!file) return;
         const data = await readDriveFile(file.id);
         if(data){
-          const fixed = fixState(data);
-          if((fixed.meta?.rev || 0) >= (state.data.meta?.rev || 0)){
-            state.data = fixed;
-            ensureCurrentProject();
-            try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
-            await pushPersonalToFirestore();
-            renderAll();
-            console.log("Migrated personal data from Drive to Firestore");
-          }
+          state.data = fixState(data);
+          ensureCurrentProject();
+          try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+          await pushPersonalToFirestore();
+          renderAll();
+          console.log("Migrated personal data from Drive to Firestore");
         }
-        localStorage.setItem("espresso_drive_migrated", "1");
       } catch(e){ console.warn("Drive migration inner:", e); }
     });
   } catch(e){ console.warn("Drive migration:", e); }
