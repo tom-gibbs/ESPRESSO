@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://content.googleapis.com https://*.firebaseapp.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://content.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https:; frame-src https://accounts.google.com https://*.firebaseapp.com;">
 <title>ESPRESSO</title>
 <link rel="icon" type="image/png" href="espresso-icon.png" />
 <link rel="manifest" href="manifest.json" />
@@ -1835,7 +1835,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <svg id="syncIconCloudPending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
           <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
         </button>
-        <button id="refreshDriveBtn" class="subtle iconTopBtn" type="button" title="Refresh Google Drive connection">
+        <button id="refreshDriveBtn" class="subtle iconTopBtn" type="button" title="Refresh sync">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         </button>
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode">▤</button>
@@ -2081,7 +2081,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 <div class="syncOverlay" id="syncOverlay" aria-hidden="true">
   <div class="syncInner">
     <div class="syncBox" role="dialog" aria-modal="true" aria-label="Sync settings">
-      <h3>Google Drive Sync</h3>
+      <h3>Sync</h3>
       <p id="syncDescription">Sign in to sync your tasks across devices</p>
 
       <div id="syncUserInfo" class="syncUserInfo" style="display:none">
@@ -6394,17 +6394,15 @@ $("forceSaveBtn").onclick = async ()=>{
     // Save to localStorage
     await saveNow({silent:true, force:true});
 
-    // Push to Google Drive if signed in
-    if(googleUser && gapiInited){
-      setStatus("Syncing to Drive…");
+    // Push to Firestore if signed in
+    if(firebaseUser){
+      setStatus("Syncing…");
       try {
-        await pushToDrive();
+        await pushPersonalToFirestore();
         setStatus("Saved & synced");
-        clearPendingSync();
       } catch(e){
-        console.error("Drive sync error:", e);
-        setStatus("Saved locally (Drive sync failed)");
-        markPendingSync();
+        console.error("Firestore sync error:", e);
+        setStatus("Saved locally (sync failed)");
       }
     } else {
       setStatus("Saved");
@@ -6449,16 +6447,16 @@ $("forceSaveBtn").onclick = async ()=>{
 })();
 
 /* =========================================================
-   GOOGLE DRIVE SYNC
+   GOOGLE AUTH & SYNC UI
    ========================================================= */
 const GOOGLE_CLIENT_ID = '146120049361-nki2hqoh9ddn9i64g5hv4tbgeaq8p90p.apps.googleusercontent.com';
-const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-const DRIVE_FILE_NAME = 'espresso-state.json';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const DRIVE_FILE_NAME = 'espresso-state.json'; // kept for migration only
 
 let googleUser = null;
 let tokenClient = null;
-let gapiInited = false;
 let gisInited = false;
+let currentAccessToken = null;
 
 const syncOverlay = $("syncOverlay");
 
@@ -6493,22 +6491,18 @@ $("shortcutsClose").onclick = closeShortcuts;
 shortcutsOverlay.addEventListener("click", (e) => { if(e.target === shortcutsOverlay) closeShortcuts(); });
 
 function updateSyncUI(){
-  const signedIn = !!googleUser && !needsReconnect;
+  const signedIn = !!firebaseUser;
   const hasUser = !!googleUser;
   $("syncSignedOut").style.display = signedIn ? "none" : "";
   $("syncSignedIn").style.display = signedIn ? "" : "none";
   $("syncUserInfo").style.display = hasUser ? "flex" : "none";
 
-  let description = "Sign in to back up your tasks";
+  let description = "Sign in to sync your tasks across devices";
   if(needsReconnect && hasUser){
     description = "Session expired - click to reconnect";
     $("googleSignInBtn").textContent = "Reconnect";
   } else if(signedIn){
-    if(pendingSync){
-      description = "Changes pending sync (will retry when online)";
-    } else {
-      description = "Your tasks are backed up to Google Drive";
-    }
+    description = "Your tasks are synced";
     $("googleSignInBtn").textContent = "Sign in with Google";
   } else {
     $("googleSignInBtn").textContent = "Sign in with Google";
@@ -6522,18 +6516,18 @@ function updateSyncUI(){
   }
 
   // Update sync button state and icon
-  const synced = signedIn && !pendingSync;
-  const pending = signedIn && pendingSync || needsReconnect;
+  const synced = signedIn;
+  const pending = needsReconnect;
   const notBackedUp = !hasUser;
 
-  $("syncBtn").classList.toggle("synced", synced);
+  $("syncBtn").classList.toggle("synced", synced && !pending);
   $("syncBtn").classList.toggle("pending", pending);
   $("syncBtn").classList.toggle("notbackedup", notBackedUp);
 
   // Show appropriate icon
   $("syncIconCloudOff").style.display = notBackedUp ? "" : "none";
   $("syncIconCloudPending").style.display = pending ? "" : "none";
-  $("syncIconCloudCheck").style.display = synced ? "" : "none";
+  $("syncIconCloudCheck").style.display = (synced && !pending) ? "" : "none";
 }
 
 function setSyncStatus(msg, type=""){
@@ -6555,22 +6549,10 @@ async function initGoogleSync(){
     if(saved) googleUser = JSON.parse(saved);
   } catch(e){}
 
-  // Wait for scripts to load (up to 5 seconds)
+  // Wait for GIS to load (up to 5 seconds)
   for(let i = 0; i < 10; i++){
-    if(typeof gapi !== "undefined" && typeof google !== "undefined" && google.accounts) break;
+    if(typeof google !== "undefined" && google.accounts) break;
     await new Promise(r => setTimeout(r, 500));
-  }
-
-  // Initialize GAPI
-  if(typeof gapi !== "undefined" && !gapiInited){
-    gapi.load("client", async () => {
-      try {
-        await gapi.client.init({});
-        await gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
-        gapiInited = true;
-        maybeEnableSync();
-      } catch(e){ console.error("GAPI init error:", e); }
-    });
   }
 
   // Initialize Google Identity Services
@@ -6588,7 +6570,7 @@ async function initGoogleSync(){
 }
 
 function maybeEnableSync(){
-  if(gapiInited && gisInited && googleUser){
+  if(gisInited && googleUser){
     // Try to silently get a token using saved email as hint
     tokenClient.requestAccessToken({
       prompt: "",
@@ -6603,7 +6585,6 @@ async function handleTokenResponse(resp){
   if(resp.error){
     console.log("Token error:", resp.error);
     if(resp.error === "interaction_required" || resp.error === "consent_required"){
-      // Need user interaction - mark as needing reconnect if we have saved user
       if(googleUser){
         needsReconnect = true;
         updateSyncUI();
@@ -6613,8 +6594,7 @@ async function handleTokenResponse(resp){
     }
     return;
   }
-  // Set the token on gapi client
-  gapi.client.setToken({ access_token: resp.access_token });
+  currentAccessToken = resp.access_token;
   needsReconnect = false;
   // Bridge to Firebase Auth
   try {
@@ -6622,14 +6602,13 @@ async function handleTokenResponse(resp){
     await firebase.auth().signInWithCredential(credential);
     firebaseUser = firebase.auth().currentUser;
   } catch(e){ console.warn("Firebase auth bridge error:", e); }
-  // Token received, now fetch user info
   setSyncStatus("Signing in...", "");
   fetchUserInfo(resp.access_token);
 }
 
 async function fetchUserInfo(accessToken){
   try {
-    const token = accessToken || gapi.client.getToken()?.access_token;
+    const token = accessToken || currentAccessToken;
     if(!token){
       setSyncStatus("No access token available", "error");
       return;
@@ -6642,15 +6621,21 @@ async function fetchUserInfo(accessToken){
       try { localStorage.setItem("espresso_google_user", JSON.stringify(googleUser)); } catch(e){}
       updateSyncUI();
       setSyncStatus("Connected! Syncing...", "success");
-      // Auto-sync on sign in
+      // Start real-time listener
+      startPersonalListener();
+      // Pull from Firestore
       try {
-        await pullFromDrive();
+        const pulled = await pullPersonalFromFirestore();
+        if(!pulled){
+          // No Firestore data yet — push local state as baseline
+          await pushPersonalToFirestore();
+        }
         setSyncStatus("Signed in as " + (googleUser.name || googleUser.email), "success");
       } catch(e){
         setSyncStatus("Signed in, but sync failed: " + e.message, "error");
       }
-      // Migrate any old Drive-based cowork spaces to Firestore
-      migrateCoworkDriveToFirestore().catch(e => console.warn("Cowork migration:", e));
+      // One-time migration from Drive (if GAPI is available)
+      migratePersonalDriveToFirestore(token).catch(e => console.warn("Drive migration:", e));
     } else {
       const errText = await resp.text();
       console.error("User info response:", resp.status, errText);
@@ -6665,10 +6650,9 @@ async function fetchUserInfo(accessToken){
 $("googleSignInBtn").onclick = async () => {
   if(!gisInited){
     setSyncStatus("Loading Google API...", "");
-    // Wait for Google API to load (retry for up to 5 seconds)
     for(let i = 0; i < 10; i++){
       await new Promise(r => setTimeout(r, 500));
-      if(typeof google !== "undefined" && google.accounts && gapiInited){
+      if(typeof google !== "undefined" && google.accounts){
         initGoogleSync();
         break;
       }
@@ -6678,7 +6662,6 @@ $("googleSignInBtn").onclick = async () => {
       return;
     }
   }
-  // Use saved email as hint for faster reconnection
   const options = { prompt: "consent" };
   if(googleUser?.email){
     options.hint = googleUser.email;
@@ -6687,10 +6670,10 @@ $("googleSignInBtn").onclick = async () => {
 };
 
 $("signOutBtn").onclick = () => {
-  const token = gapi.client.getToken();
-  if(token){
-    google.accounts.oauth2.revoke(token.access_token);
-    gapi.client.setToken(null);
+  stopPersonalListener();
+  if(currentAccessToken){
+    try { google.accounts.oauth2.revoke(currentAccessToken); } catch(e){}
+    currentAccessToken = null;
   }
   firebase.auth().signOut().catch(()=>{}); firebaseUser = null;
   googleUser = null;
@@ -6707,63 +6690,35 @@ $("syncNowBtn").onclick = async () => {
   setSyncStatus("Syncing...", "");
   $("syncBtn").classList.add("syncing");
   try {
-    await pushToDrive();
-    clearPendingSync();
+    await pullPersonalFromFirestore();
+    await pushPersonalToFirestore();
     setSyncStatus("Synced successfully!", "success");
   } catch(e){
     setSyncStatus("Sync failed: " + e.message, "error");
   }
   $("syncBtn").classList.remove("syncing");
+  updateSyncUI();
   btn.disabled = false;
 };
 
 // Refresh Google Drive connection
-$("refreshDriveBtn").onclick = () => {
-  if(!tokenClient){
-    setStatus("Google API not ready");
-    return;
-  }
+$("refreshDriveBtn").onclick = async () => {
   const btn = $("refreshDriveBtn");
   btn.disabled = true;
   btn.querySelector("svg").style.animation = "spin 1s linear infinite";
-
-  setStatus("Refreshing connection...");
-
-  const options = { prompt: "" }; // Empty prompt for silent refresh
-  if(googleUser?.email){
-    options.hint = googleUser.email;
+  setStatus("Refreshing…");
+  try {
+    await pullPersonalFromFirestore();
+    setStatus("Synced");
+    updateSyncUI();
+  } catch(e){
+    setStatus("Refresh failed: " + e.message);
   }
-
-  // Store callback to re-enable button
-  const origCallback = tokenClient.callback;
-  tokenClient.callback = async (resp) => {
-    btn.querySelector("svg").style.animation = "";
-    if(resp.error){
-      btn.disabled = false;
-      setStatus("Refresh failed - try signing in again");
-    } else {
-      // Connection refreshed, now sync
-      setStatus("Syncing...");
-      $("syncBtn").classList.add("syncing");
-      try {
-        await pushToDrive();
-        clearPendingSync();
-        setStatus("Synced");
-        updateSyncUI();
-      } catch(e){
-        setStatus("Sync failed: " + e.message);
-      }
-      $("syncBtn").classList.remove("syncing");
-      btn.disabled = false;
-    }
-    tokenClient.callback = origCallback;
-    if(origCallback) origCallback(resp);
-  };
-
-  tokenClient.requestAccessToken(options);
+  btn.querySelector("svg").style.animation = "";
+  btn.disabled = false;
 };
 
-// Google Drive functions
+// Google Drive functions (kept temporarily for one-time migration)
 async function findDriveFile(){
   try {
     const resp = await gapi.client.drive.files.list({
@@ -6790,83 +6745,6 @@ async function readDriveFile(fileId){
     console.error("Read file error:", e);
     return null;
   }
-}
-
-async function writeDriveFile(fileId, data){
-  const boundary = "espresso_boundary";
-  const metadata = { name: DRIVE_FILE_NAME, mimeType: "application/json" };
-
-  const body = fileId
-    ? JSON.stringify(data)
-    : [
-        `--${boundary}`,
-        "Content-Type: application/json; charset=UTF-8",
-        "",
-        JSON.stringify(metadata),
-        `--${boundary}`,
-        "Content-Type: application/json",
-        "",
-        JSON.stringify(data),
-        `--${boundary}--`
-      ].join("\r\n");
-
-  const url = fileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`
-    : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
-
-  const resp = await fetch(url, {
-    method: fileId ? "PATCH" : "POST",
-    headers: {
-      Authorization: `Bearer ${gapi.client.getToken().access_token}`,
-      "Content-Type": fileId ? "application/json" : `multipart/related; boundary=${boundary}`
-    },
-    body: body
-  });
-
-  if(!resp.ok) throw new Error("Failed to save to Drive");
-  return await resp.json();
-}
-
-async function pullFromDrive(){
-  if(!googleUser || !gapiInited) return;
-
-  try {
-    const file = await findDriveFile();
-    if(file){
-      const data = await readDriveFile(file.id);
-      if(data){
-        // Merge: use remote if it has higher rev
-        const remoteRev = data.meta?.rev || 0;
-        const localRev = state.data.meta?.rev || 0;
-        if(remoteRev >= localRev){
-          state.data = fixState(data);
-          state.data.meta.owner = CLIENT_ID;
-          ensureCurrentProject();
-          rolloverDoneBuckets();
-          enforceDependenciesAllProjects();
-          // Save to localStorage
-          try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
-          renderAll();
-          setStatus("Synced from Drive");
-        }
-      }
-    }
-  } catch(e){
-    console.error("Pull error:", e);
-  }
-}
-
-async function pushToDrive(){
-  if(!googleUser || !gapiInited) return;
-
-  const file = await findDriveFile();
-  const payload = {
-    meta: state.data.meta,
-    projects: state.data.projects,
-    projectOrder: state.data.projectOrder,
-    projects_order: state.data.projectOrder
-  };
-  await writeDriveFile(file?.id || null, payload);
 }
 
 /* =========================================================
@@ -7033,30 +6911,6 @@ function queueCoworkSave(){
 }
 
 /* Auto-migrate old Drive-based cowork spaces to Firestore */
-async function migrateCoworkDriveToFirestore(){
-  if(!firebaseUser || !googleUser || !gapiInited) return;
-  const toMigrate = coworkSpaces.filter(s => s.fileId && !s.firestoreId && !s.migrated);
-  if(toMigrate.length === 0) return;
-  console.log("Migrating", toMigrate.length, "cowork space(s) from Drive to Firestore...");
-  for(const sp of toMigrate){
-    try {
-      const data = await readDriveFile(sp.fileId);
-      if(!data){ sp.migrated = true; continue; }
-      const fixed = fixCoworkData(data);
-      fixed.meta.memberEmails = (fixed.meta.members||[]).map(m=>m.email);
-      const payload = { meta: fixed.meta, projects: fixed.projects, projectOrder: fixed.projectOrder };
-      const docRef = db.collection("coworkSpaces").doc();
-      await docRef.set(payload);
-      sp.firestoreId = docRef.id;
-      sp.migrated = true;
-      console.log("Migrated space:", sp.name, "->", docRef.id);
-    } catch(e){
-      console.error("Migration failed for space:", sp.name, e);
-    }
-  }
-  saveCoworkSpaces();
-}
-
 // Rollover cowork done buckets (all projects in current space)
 function rolloverCoworkDoneBuckets(){
   if(!coworkState.data) return;
@@ -7071,71 +6925,114 @@ function rolloverCoworkDoneBuckets(){
   }
 }
 
-// Pending sync tracking
-let pendingSync = false;
-const PENDING_SYNC_KEY = "espresso_pending_sync";
-
-function markPendingSync(){
-  pendingSync = true;
-  try { localStorage.setItem(PENDING_SYNC_KEY, "1"); } catch(e){}
-  updateSyncUI();
+/* =========================================================
+   PERSONAL FIRESTORE SYNC
+   ========================================================= */
+async function pushPersonalToFirestore(){
+  if(!firebaseUser || !state.data) return;
+  state.data.meta.rev = (state.data.meta.rev || 0) + 1;
+  const payload = {
+    meta: state.data.meta,
+    projects: state.data.projects,
+    projectOrder: state.data.projectOrder,
+    globalOrder: state.data.globalOrder || {}
+  };
+  await db.collection("personalData").doc(firebaseUser.uid).set(payload);
 }
 
-function clearPendingSync(){
-  pendingSync = false;
-  try { localStorage.removeItem(PENDING_SYNC_KEY); } catch(e){}
-  updateSyncUI();
-}
-
-function checkPendingSync(){
+async function pullPersonalFromFirestore(){
+  if(!firebaseUser) return false;
   try {
-    pendingSync = localStorage.getItem(PENDING_SYNC_KEY) === "1";
-  } catch(e){}
+    const doc = await db.collection("personalData").doc(firebaseUser.uid).get();
+    if(!doc.exists) return false;
+    const remote = fixState(doc.data());
+    const localRev = state.data.meta?.rev || 0;
+    if(remote.meta.rev >= localRev){
+      state.data = remote;
+      ensureCurrentProject();
+      rolloverDoneBuckets();
+      enforceDependenciesAllProjects();
+      try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+      renderAll();
+    }
+    return true;
+  } catch(e){
+    console.error("Personal pull error:", e);
+    return false;
+  }
 }
 
-// Sync when coming back online
+let personalUnsubscribe = null;
+function startPersonalListener(){
+  stopPersonalListener();
+  if(!firebaseUser) return;
+  personalUnsubscribe = db.collection("personalData").doc(firebaseUser.uid)
+    .onSnapshot(doc => {
+      if(!doc.exists || isCoworkMode()) return;
+      const remote = fixState(doc.data());
+      if(remote.meta.rev > (state.data.meta?.rev || 0)){
+        state.data = remote;
+        ensureCurrentProject();
+        rolloverDoneBuckets();
+        enforceDependenciesAllProjects();
+        try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+        renderAll();
+      }
+    }, err => console.error("Personal listener error:", err));
+}
+function stopPersonalListener(){
+  if(personalUnsubscribe){ personalUnsubscribe(); personalUnsubscribe = null; }
+}
+
+// One-time migration from Google Drive to Firestore
+async function migratePersonalDriveToFirestore(accessToken){
+  if(localStorage.getItem("espresso_drive_migrated")) return;
+  if(typeof gapi === "undefined") { localStorage.setItem("espresso_drive_migrated", "1"); return; }
+  try {
+    gapi.load("client", async () => {
+      try {
+        await gapi.client.init({});
+        await gapi.client.load("https://www.googleapis.com/discovery/v1/apis/drive/v3/rest");
+        gapi.client.setToken({ access_token: accessToken });
+        const file = await findDriveFile();
+        if(!file){ localStorage.setItem("espresso_drive_migrated", "1"); return; }
+        const data = await readDriveFile(file.id);
+        if(data){
+          const fixed = fixState(data);
+          if((fixed.meta?.rev || 0) >= (state.data.meta?.rev || 0)){
+            state.data = fixed;
+            ensureCurrentProject();
+            try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+            await pushPersonalToFirestore();
+            renderAll();
+            console.log("Migrated personal data from Drive to Firestore");
+          }
+        }
+        localStorage.setItem("espresso_drive_migrated", "1");
+      } catch(e){ console.warn("Drive migration inner:", e); }
+    });
+  } catch(e){ console.warn("Drive migration:", e); }
+}
+
+// Sync when coming back online (Firestore handles its own reconnection,
+// but we push cowork data explicitly for safety)
 window.addEventListener("online", async () => {
-  if(googleUser && gapiInited && pendingSync){
-    setStatus("Back online, syncing…");
-    try {
-      await pushToDrive();
-      clearPendingSync();
-      setStatus("Synced");
-    } catch(e){
-      console.error("Online sync failed:", e);
-    }
-  }
-  // Also push cowork data if in cowork mode
   if(isCoworkMode() && firebaseUser){
     try { await pushCoworkToFirestore(); } catch(e){}
   }
 });
 
-// Hook into save to also push to Drive
+// Hook into save to also push to Firestore
 const originalQueueSave = queueSave;
 queueSave = function(){
   originalQueueSave();
-  // Debounced push to Drive
-  clearTimeout(window._driveSaveTimer);
-  window._driveSaveTimer = setTimeout(async () => {
-    if(googleUser && gapiInited){
-      if(navigator.onLine){
-        try {
-          await pushToDrive();
-          clearPendingSync();
-        } catch(e){
-          console.error("Drive push error:", e);
-          markPendingSync();
-        }
-      } else {
-        markPendingSync();
-      }
+  clearTimeout(window._firestoreSaveTimer);
+  window._firestoreSaveTimer = setTimeout(async () => {
+    if(firebaseUser){
+      try { await pushPersonalToFirestore(); } catch(e){ console.error("Firestore push error:", e); }
     }
   }, 2000);
 };
-
-// Check for pending sync on load
-checkPendingSync();
 
 // Register Service Worker for PWA/offline support
 if ('serviceWorker' in navigator) {
