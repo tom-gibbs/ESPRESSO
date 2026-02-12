@@ -1579,6 +1579,18 @@ html[data-theme="dark"] .themeSwitch .themeIconMoon{display:block}
 .toggleSwitch.on{background:var(--accent)}
 .toggleKnob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggleSwitch.on .toggleKnob{transform:translateX(18px)}
+.settingsAiSection{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.aiStatusBadge{font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px}
+.aiStatusBadge.connected{background:rgba(34,197,94,.15);color:#22c55e}
+.aiStatusBadge.disconnected{background:rgba(239,68,68,.12);color:#ef4444}
+.aiSetupInfo{font-size:12.5px;line-height:1.6;color:var(--muted);padding:0 0 4px}
+.aiSetupInfo code{font-size:11.5px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px;font-family:monospace;user-select:all}
+html[data-theme="light"] .aiSetupInfo code{background:rgba(0,0,0,.05)}
+.aiSetupInfo .aiStep{display:flex;gap:8px;margin:6px 0}
+.aiSetupInfo .aiStepNum{font-weight:800;color:var(--accent);min-width:16px}
+.aiSetupInfo .aiModels{margin-top:8px;font-size:12px}
+.aiSetupInfo .aiModelTag{display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.06);margin:2px 2px;font-size:11px;font-family:monospace}
+html[data-theme="light"] .aiSetupInfo .aiModelTag{background:rgba(0,0,0,.05)}
 .settingsDanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
 .settingsResetBtn{width:100%;padding:10px;border-radius:12px;border:1px solid #ef4444;background:none;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer}
 .settingsResetBtn:hover{background:rgba(239,68,68,.1)}
@@ -2335,6 +2347,14 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
       </div>
 
+      <div class="settingsAiSection">
+        <div class="settingsRow" style="border-bottom:none;padding-bottom:4px">
+          <span class="settingsLabel">AI Tools</span>
+          <span id="aiStatus" class="aiStatusBadge"></span>
+        </div>
+        <div id="aiSetupInfo" class="aiSetupInfo"></div>
+      </div>
+
       <div class="settingsDanger">
         <button id="resetBtn" class="settingsResetBtn" type="button">Reset ESPRESSO</button>
       </div>
@@ -2439,6 +2459,26 @@ const COMPACT_VIS_KEY = "espresso_compact_vis_v1";
 const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
 const MIC_VIS_KEY = "espresso_mic_vis_v1";
 
+function renderAiSetup(){
+  const status = $("aiStatus");
+  const info = $("aiSetupInfo");
+  if(ollamaAvailable){
+    status.textContent = "Connected";
+    status.className = "aiStatusBadge connected";
+    const modelTags = ollamaModels.map(m => '<span class="aiModelTag">' + m + '</span>').join("");
+    info.innerHTML = '<div class="aiModels">Models: ' + (modelTags || "none detected") + '</div>';
+  } else {
+    status.textContent = "Not connected";
+    status.className = "aiStatusBadge disconnected";
+    info.innerHTML =
+      '<div style="margin:8px 0 4px;font-weight:600;color:var(--text)">Quick setup (2 min)</div>' +
+      '<div class="aiStep"><span class="aiStepNum">1</span><span>Install Ollama — go to <code>ollama.com/download</code></span></div>' +
+      '<div class="aiStep"><span class="aiStepNum">2</span><span>Open Terminal and run:<br><code>ollama pull llama3.2</code></span></div>' +
+      '<div class="aiStep"><span class="aiStepNum">3</span><span>Start with browser access:<br><code>OLLAMA_ORIGINS=* ollama serve</code></span></div>' +
+      '<div style="margin-top:8px">Reload this page once running. For smarter organise tools, also pull <code>llama3.1:8b</code></div>';
+  }
+}
+
 function openSettings(){
   // Sync toggle states before showing
   const compactVis = localStorage.getItem(COMPACT_VIS_KEY) !== "false";
@@ -2449,6 +2489,7 @@ function openSettings(){
   $("micVisToggle").classList.toggle("on", micVis);
   const depsAlways = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
   $("depsAlwaysToggle").classList.toggle("on", depsAlways);
+  renderAiSetup();
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -7935,6 +7976,7 @@ qsa(".bottomNavBtn").forEach(btn => {
    AI / OLLAMA INTEGRATION
    ========================================================= */
 let ollamaAvailable = false;
+let ollamaModels = [];
 const OLLAMA_URL = "http://localhost:11434";
 let OLLAMA_MODEL_LIGHT = "llama3.2:latest";
 const OLLAMA_MODEL_FAST = "llama3.2:latest";
@@ -7949,8 +7991,8 @@ async function detectOllama(){
     ollamaAvailable = true;
     $("aiBtn").style.display = "";
     const data = await r.json();
-    const names = (data.models || []).map(m => m.name || "");
-    if(names.some(n => n.startsWith("llama3.2:1b"))) OLLAMA_MODEL_LIGHT = "llama3.2:1b";
+    ollamaModels = (data.models || []).map(m => m.name || "");
+    if(ollamaModels.some(n => n.startsWith("llama3.2:1b"))) OLLAMA_MODEL_LIGHT = "llama3.2:1b";
   } catch(e){}
 }
 
