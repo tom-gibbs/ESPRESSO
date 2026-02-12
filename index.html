@@ -7786,7 +7786,8 @@ qsa(".bottomNavBtn").forEach(btn => {
    ========================================================= */
 let ollamaAvailable = false;
 const OLLAMA_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "llama3.1:8b";
+const OLLAMA_MODEL_FAST = "llama3.2:latest";
+const OLLAMA_MODEL_FULL = "llama3.1:8b";
 
 async function detectOllama(){
   try {
@@ -7798,8 +7799,8 @@ async function detectOllama(){
   } catch(e){}
 }
 
-async function ollamaGenerate(prompt, system){
-  const body = { model: OLLAMA_MODEL, prompt, stream: false };
+async function ollamaGenerate(prompt, system, model){
+  const body = { model: model || OLLAMA_MODEL_FAST, prompt, stream: false };
   if(system) body.system = system;
   const r = await fetch(OLLAMA_URL + "/api/generate", {
     method: "POST",
@@ -7874,7 +7875,12 @@ async function showAiSummary(){
       const taskList = tasks.map(t => "- " + t.text + " (" + t.project + ")").join("\n");
       const prompt = "Here are the tasks I completed " + period + ":\n" + taskList + "\n\nWrite a brief, upbeat summary suitable for a standup or weekly review. Group by project if there are multiple. Keep it concise.";
       const result = await ollamaGenerate(prompt, "You are a concise standup assistant. Write clear summaries in markdown. Be brief and positive.");
-      $("aiSummaryResult").innerHTML = renderNotesMarkdown(result);
+      const resultEl = $("aiSummaryResult");
+      resultEl.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="subtle aiCopyBtn" style="font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer">Copy</button></div>' + renderNotesMarkdown(result);
+      resultEl.querySelector(".aiCopyBtn").onclick = async function(){
+        try { await navigator.clipboard.writeText(result); this.textContent = "Copied!"; setTimeout(()=>{ this.textContent = "Copy"; }, 1500); }
+        catch(e){ this.textContent = "Failed"; }
+      };
     } catch(e){
       $("aiSummaryResult").innerHTML = '<span style="color:#ef4444">AI unavailable. Is Ollama running?</span>';
     }
@@ -7937,7 +7943,7 @@ async function runMomentumBuilder(){
   try {
     const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text + (t.est ? " (~" + t.est + "min)" : "")).join("\n");
     const prompt = "Here are my active tasks:\n" + taskList + "\n\nSuggest an order to tackle them that builds momentum. Start with 2-3 quick wins (tasks that sound simple/fast), then transition to the most important deep work. Return a numbered list with brief reasoning for the order.";
-    const result = await ollamaGenerate(prompt, "You are a productivity coach specializing in ADHD-friendly work strategies. Be concise and actionable.");
+    const result = await ollamaGenerate(prompt, "You are a productivity coach specializing in ADHD-friendly work strategies. Be concise and actionable.", OLLAMA_MODEL_FULL);
     $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
@@ -7968,7 +7974,7 @@ async function runSimilarTasks(){
   try {
     const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text).join("\n");
     const prompt = "Group these tasks by theme/topic. For each group, suggest a color from this list: red, orange, yellow, green, blue, purple, pink. Output as markdown with group headers and the task numbers in each group.\n\nTasks:\n" + taskList;
-    const result = await ollamaGenerate(prompt, "You are a task organization assistant. Group tasks by theme concisely.");
+    const result = await ollamaGenerate(prompt, "You are a task organization assistant. Group tasks by theme concisely.", OLLAMA_MODEL_FULL);
     $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
@@ -8000,7 +8006,7 @@ async function runSuggestDeps(){
   try {
     const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text).join("\n");
     const prompt = "Look at these tasks and suggest which ones logically need to be completed before others. Only suggest dependencies that are clearly logical (not just nice-to-have ordering). Output as: \"Task X should be done before Task Y because...\". Be selective — only suggest obvious dependencies.\n\nTasks:\n" + taskList;
-    const result = await ollamaGenerate(prompt, "You are a project planning assistant. Only suggest clear, logical dependencies. Be conservative.");
+    const result = await ollamaGenerate(prompt, "You are a project planning assistant. Only suggest clear, logical dependencies. Be conservative.", OLLAMA_MODEL_FULL);
     $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
@@ -8039,7 +8045,7 @@ async function runStaleAudit(){
   try {
     const taskList = stale.map(t => '- "' + t.text + '" [' + t.project + '] — ' + t.age + ' days old').join("\n");
     const prompt = "These tasks have been sitting for over 2 weeks:\n" + taskList + "\n\nFor each task, give a brief recommendation: still relevant? should it be broken down into smaller tasks? should it be rephrased to be more actionable? or should it be deleted? Be honest and direct.";
-    const result = await ollamaGenerate(prompt, "You are a productivity coach. Be direct and honest. Help the user decide what to keep, rework, or drop.");
+    const result = await ollamaGenerate(prompt, "You are a productivity coach. Be direct and honest. Help the user decide what to keep, rework, or drop.", OLLAMA_MODEL_FULL);
     $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
