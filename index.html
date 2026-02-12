@@ -1694,7 +1694,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .spacer{display:none}
 
   /* Hide buttons that are in bottom nav or not needed on mobile */
-  #syncBtn,#focusBtn,.depMapBtn{display:none}
+  #syncBtn,#focusBtn,#compactToggle,.depMapBtn{display:none}
 
   /* Force compact mode on mobile */
   .metaRow{display:none}
@@ -1935,10 +1935,11 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <svg id="syncIconCloudPending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
           <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
         </button>
-        <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         <button id="coworkBtn" class="subtle iconTopBtn" type="button" title="Cowork Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
         <button id="aiBtn" class="subtle iconTopBtn" type="button" title="AI Tools" style="display:none;">&#10022;</button>
+        <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6H4zM14 4h6v6h-6z"/><path d="M4 4h6v6H4zM14 14h6v6h-6z"/></svg></button>
         <button id="focusBtn" class="primary iconTopBtn" type="button" title="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
+        <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       </div>
     </div>
 
@@ -2306,8 +2307,8 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
 
         <div class="settingsRow">
-          <span class="settingsLabel">Compact Mode</span>
-          <button id="compactToggle" class="toggleSwitch" type="button" title="Toggle compact mode">
+          <span class="settingsLabel">Compact Button</span>
+          <button id="compactVisToggle" class="toggleSwitch" type="button" title="Show compact mode button in toolbar">
             <span class="toggleKnob"></span>
           </button>
         </div>
@@ -2413,20 +2414,20 @@ function initCompact(){
 }
 $("compactToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-compact");
-  const next = cur !== "true";
-  applyCompact(next);
-  $("compactToggle").classList.toggle("on", next);
+  applyCompact(cur !== "true");
   if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 /* =========================================================
    SETTINGS OVERLAY
    ========================================================= */
+const COMPACT_VIS_KEY = "espresso_compact_vis_v1";
 const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
 
 function openSettings(){
   // Sync toggle states before showing
-  $("compactToggle").classList.toggle("on", document.documentElement.getAttribute("data-compact") === "true");
+  const compactVis = localStorage.getItem(COMPACT_VIS_KEY) !== "false";
+  $("compactVisToggle").classList.toggle("on", compactVis);
   const focusVis = localStorage.getItem(FOCUS_VIS_KEY) !== "false";
   $("focusVisToggle").classList.toggle("on", focusVis);
   $("settingsOverlay").classList.add("on");
@@ -2436,6 +2437,25 @@ function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
 $("settingsBtn").onclick = openSettings;
 $("settingsClose").onclick = closeSettings;
 $("settingsOverlay").onclick = (e) => { if(e.target === $("settingsOverlay")) closeSettings(); };
+
+// Compact button visibility toggle
+function applyCompactVis(show){
+  $("compactToggle").style.display = show ? "" : "none";
+  try{ localStorage.setItem(COMPACT_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initCompactVis(){
+  try{
+    const saved = localStorage.getItem(COMPACT_VIS_KEY);
+    if(saved === "false"){ applyCompactVis(false); return; }
+  }catch{}
+  applyCompactVis(true);
+}
+$("compactVisToggle").onclick = () => {
+  const cur = localStorage.getItem(COMPACT_VIS_KEY) !== "false";
+  const next = !cur;
+  applyCompactVis(next);
+  $("compactVisToggle").classList.toggle("on", next);
+};
 
 // Focus button visibility toggle
 function applyFocusVis(show){
@@ -6690,6 +6710,7 @@ $("resetBtn").onclick = ()=>{
 (async function init(){
   initTheme();
   initCompact();
+  initCompactVis();
   initFocusVis();
   if(typeof marked !== "undefined") marked.setOptions({ gfm: true, breaks: true });
   loadViewState();
