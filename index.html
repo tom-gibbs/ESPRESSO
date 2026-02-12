@@ -2526,7 +2526,7 @@ function projectHasDeps(){
   if(!proj) return false;
   for(const list of ["active","paused"]){
     for(const t of (proj[list] || [])){
-      if(Array.isArray(t.dependsOn) && t.dependsOn.length) return true;
+      if(Array.isArray(t.dependsOn) && t.dependsOn.length && isBlocked(t)) return true;
     }
   }
   return false;
