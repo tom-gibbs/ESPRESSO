@@ -1520,7 +1520,7 @@ html[data-theme="light"] button.coworkActive{color:rgba(109,66,184,1);border-col
 /* =========================================================
    AI OVERLAY
    ========================================================= */
-#aiBtn{font-size:16px;letter-spacing:0}
+#aiBtn{font-size:15px;letter-spacing:0}
 .aiOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;z-index:10001;overflow-y:auto}
 .aiOverlay.on{display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
 .aiInner{width:100%;max-width:540px}
@@ -1936,7 +1936,6 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
         </button>
         <button id="coworkBtn" class="subtle iconTopBtn" type="button" title="Cowork Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
-        <button id="aiBtn" class="subtle iconTopBtn" type="button" title="AI Tools" style="display:none;">&#10022;</button>
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6H4zM14 4h6v6h-6z"/><path d="M4 4h6v6H4zM14 14h6v6h-6z"/></svg></button>
         <button id="focusBtn" class="primary iconTopBtn" type="button" title="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
         <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -1951,6 +1950,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <button id="depMapBtn" class="depMapBtn" type="button" title="Dependency map">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/><path d="M12 12v3"/></svg>
           </button>
+          <button id="aiBtn" class="depMapBtn" type="button" title="AI Tools" style="display:none;">&#10022;</button>
         </div>
 
         <div id="projectMenu" class="projectMenu" aria-hidden="true">
@@ -2326,6 +2326,13 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
             <span class="toggleKnob"></span>
           </button>
         </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Always Show Deps</span>
+          <button id="depsAlwaysToggle" class="toggleSwitch" type="button" title="Always show dependencies graph button">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
       </div>
 
       <div class="settingsDanger">
@@ -2440,6 +2447,8 @@ function openSettings(){
   $("focusVisToggle").classList.toggle("on", focusVis);
   const micVis = localStorage.getItem(MIC_VIS_KEY) !== "false";
   $("micVisToggle").classList.toggle("on", micVis);
+  const depsAlways = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
+  $("depsAlwaysToggle").classList.toggle("on", depsAlways);
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -2504,6 +2513,35 @@ $("micVisToggle").onclick = () => {
   const next = !cur;
   applyMicVis(next);
   $("micVisToggle").classList.toggle("on", next);
+};
+
+// Deps button auto-hide (show only when project has dependencies)
+const DEPS_ALWAYS_KEY = "espresso_deps_always_v1";
+
+function updateDepsBtnVis(){
+  const alwaysShow = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
+  if(alwaysShow){ $("depMapBtn").style.display = ""; return; }
+  const d = isCoworkMode() ? coworkState.data : state.data;
+  const pid = isCoworkMode() ? coworkState.projectId : state.projectId;
+  const proj = d.projects[pid];
+  let hasDeps = false;
+  if(proj){
+    for(const list of ["active","paused"]){
+      for(const t of (proj[list] || [])){
+        if(Array.isArray(t.dependsOn) && t.dependsOn.length){ hasDeps = true; break; }
+      }
+      if(hasDeps) break;
+    }
+  }
+  $("depMapBtn").style.display = hasDeps ? "" : "none";
+}
+
+$("depsAlwaysToggle").onclick = () => {
+  const cur = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
+  const next = !cur;
+  try{ localStorage.setItem(DEPS_ALWAYS_KEY, next ? "true" : "false"); }catch{}
+  $("depsAlwaysToggle").classList.toggle("on", next);
+  updateDepsBtnVis();
 };
 
 /* =========================================================
@@ -6598,6 +6636,7 @@ function renderAll(){
     renderInlineProjectSelect();
   }
 
+  updateDepsBtnVis();
   renderList();
   renderFocus();
   updateFocusTimerUI();
@@ -7978,18 +8017,15 @@ async function showAiSummary(){
   const loading = $("aiLoading");
 
   const d = isCoworkMode() ? coworkState.data : state.data;
-  const todayTasks = [];
-  const weekTasks = [];
-  for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
-    const proj = d.projects[pid];
-    if(!proj) continue;
-    const pName = proj.name || pid;
-    (proj.done_today || []).forEach(t => todayTasks.push({ text: t.text, project: pName }));
-    (proj.done_week || []).forEach(t => weekTasks.push({ text: t.text, project: pName }));
-  }
+  const curPid = isCoworkMode() ? coworkState.projectId : state.projectId;
+  const curProj = d.projects[curPid];
+  const projName = curProj ? (curProj.name || curPid) : "this project";
+
+  const todayTasks = (curProj && curProj.done_today || []).map(t => t.text);
+  const weekTasks = (curProj && curProj.done_week || []).map(t => t.text);
 
   if(!todayTasks.length && !weekTasks.length){
-    content.innerHTML = '<div class="aiPlaceholder">No completed tasks to summarize yet. Get some tasks done first!</div>';
+    content.innerHTML = '<div class="aiPlaceholder">No completed tasks in ' + projName + ' to summarize yet.</div>';
     $("aiCopyBtn").style.display = "none";
     return;
   }
@@ -8011,9 +8047,9 @@ async function showAiSummary(){
     $("aiCopyBtn").style.display = "none";
     loading.style.display = "";
     try {
-      const taskList = tasks.map(t => "- " + t.text + " (" + t.project + ")").join("\n");
-      const prompt = "Here are the tasks I completed " + period + ":\n" + taskList + "\n\nWrite a brief, upbeat summary suitable for a standup or weekly review. Group by project if there are multiple. Keep it concise.";
-      const result = await ollamaGenerate(prompt, "You are a concise standup assistant. Write clear summaries in markdown. Be brief and positive.", OLLAMA_MODEL_LIGHT);
+      const taskList = tasks.map(t => "- " + t).join("\n");
+      const prompt = "Project: " + projName + "\nTasks I completed " + period + ":\n" + taskList + "\n\nSummarise what I got done " + period + " on this project. Write in first person (\"I did X\", \"I completed Y\"). Be matter-of-fact and specific. No filler or cheerfulness. Keep it concise.";
+      const result = await ollamaGenerate(prompt, "You write brief, matter-of-fact first-person summaries. No fluff, no encouragement, just state what was accomplished. Use markdown for structure if needed.", OLLAMA_MODEL_LIGHT);
       _aiLastRawResult = result;
       $("aiSummaryResult").innerHTML = renderNotesMarkdown(result);
       $("aiCopyBtn").style.display = "";
