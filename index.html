@@ -940,14 +940,19 @@ html[data-theme="light"] .depMapBox{
   display:flex;align-items:center;justify-content:center;
 }
 .depMapClose:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.depMapToolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
 .depMapLegend{
-  display:flex;gap:16px;margin-bottom:16px;
+  display:flex;gap:12px;
   font-size:12px;color:var(--muted);
 }
-.legendItem{display:flex;align-items:center;gap:6px}
-.legendDot{width:10px;height:10px;border-radius:999px}
+.depMapToggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
+.depMapToggle input{accent-color:var(--accent);width:14px;height:14px}
+.legendItem{display:flex;align-items:center;gap:5px}
+.legendDot{width:10px;height:10px;border-radius:3px}
 .legendDot.active{background:#4ade80}
-.legendDot.paused{background:#facc15}
+.legendDot.blocked1{background:#facc15}
+.legendDot.blocked2{background:#f97316}
+.legendDot.blocked3{background:#ef4444}
 .legendDot.done{background:var(--muted);opacity:0.5}
 .depMapContainer{
   position:relative;
@@ -975,24 +980,25 @@ html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
 .depMapNodes{position:relative}
 .depMapNode{
   position:absolute;
-  padding:8px 14px;
+  padding:8px 10px;
   border-radius:var(--r-sm);
-  border:1px solid var(--line);
-  background:var(--paper);
-  font-size:13px;
+  border:none;
+  font-size:12px;
   font-weight:600;
   cursor:pointer;
-  white-space:nowrap;
-  max-width:180px;
   overflow:hidden;
-  text-overflow:ellipsis;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  line-height:1.3;
   transition:all 0.15s ease;
+  color:#fff;
 }
-.depMapNode:hover{border-color:var(--accent);transform:scale(1.02)}
-.depMapNode.active{border-left:3px solid #4ade80}
-.depMapNode.paused{border-left:3px solid #facc15}
-.depMapNode.done{border-left:3px solid var(--muted);opacity:0.5}
-.depMapNode.selected{box-shadow:0 0 0 2px var(--accent);border-color:var(--accent)}
+.depMapNode:hover{transform:scale(1.03);filter:brightness(1.1)}
+.depMapNode.active{background:#4ade80;color:#052e16}
+.depMapNode.blocked1{background:#facc15;color:#422006}
+.depMapNode.blocked2{background:#f97316;color:#fff}
+.depMapNode.blocked3{background:#ef4444;color:#fff}
+.depMapNode.done{background:var(--muted);opacity:0.45;color:#fff}
+.depMapNode.selected{box-shadow:0 0 0 2px var(--accent)}
 
 /* =========================================================
    FOCUS OVERLAY (includes Notes panel)
@@ -1855,7 +1861,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .depMapLegend{gap:12px;margin-bottom:12px;font-size:11px;flex-wrap:wrap}
   .legendDot{width:8px;height:8px}
   .depMapContainer{padding:12px;border-radius:var(--r-sm);min-height:150px}
-  .depMapNode{padding:6px 10px;font-size:12px;max-width:140px}
+  .depMapNode{padding:6px 8px;font-size:11px}
 
   /* Sync overlay */
   .syncInner{padding:12px}
@@ -2134,10 +2140,15 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <h3 class="modalTitle">Dependency Map</h3>
         <button id="depMapClose" class="depMapClose" type="button">✕</button>
       </div>
-      <div class="depMapLegend">
-        <span class="legendItem"><span class="legendDot active"></span>Active</span>
-        <span class="legendItem"><span class="legendDot paused"></span>Paused</span>
-        <span class="legendItem"><span class="legendDot done"></span>Done</span>
+      <div class="depMapToolbar">
+        <div class="depMapLegend">
+          <span class="legendItem"><span class="legendDot active"></span>Active</span>
+          <span class="legendItem"><span class="legendDot blocked1"></span>1 blocker</span>
+          <span class="legendItem"><span class="legendDot blocked2"></span>2 blockers</span>
+          <span class="legendItem"><span class="legendDot blocked3"></span>3+</span>
+          <span class="legendItem"><span class="legendDot done"></span>Done</span>
+        </div>
+        <label class="depMapToggle"><input type="checkbox" id="depMapShowDone"><span>Show done</span></label>
       </div>
       <div id="depMapContainer" class="depMapContainer">
         <div id="depMapWrapper" class="depMapWrapper">
@@ -3953,11 +3964,19 @@ const depMapContainer = $("depMapContainer");
 const depMapNodes = $("depMapNodes");
 const depMapSvg = $("depMapSvg");
 
+const DEPMAP_DONE_KEY = "espresso_depmap_done_v1";
+
 function openDepMap(){
+  $("depMapShowDone").checked = localStorage.getItem(DEPMAP_DONE_KEY) === "true";
   depMapOverlay.classList.add("on");
   document.body.style.overflow = "hidden";
   renderDepMap();
 }
+
+$("depMapShowDone").onchange = () => {
+  try{ localStorage.setItem(DEPMAP_DONE_KEY, $("depMapShowDone").checked ? "true" : "false"); }catch{}
+  renderDepMap();
+};
 
 function closeDepMap(){
   depMapOverlay.classList.remove("on");
@@ -3972,6 +3991,8 @@ depMapOverlay.addEventListener("click",(e)=>{ if(e.target===depMapOverlay) close
 function renderDepMap(){
   depMapNodes.innerHTML = "";
   depMapSvg.innerHTML = "";
+
+  const showDoneTasks = $("depMapShowDone").checked;
 
   // Gather all tasks from current project (or all projects if ALL view)
   const tasks = [];
@@ -4057,16 +4078,20 @@ function renderDepMap(){
       if(task && !isTaskDone(task)){ allDone = false; break; }
     }
 
-    if(!allDone) components.push(comp);
+    if(!allDone || showDoneTasks) components.push(comp);
   }
 
-  // Collect tasks from non-done components
+  // Collect tasks from visible components
   const tasksWithDeps = new Set();
   for(const comp of components){
     for(const k of comp) tasksWithDeps.add(k);
   }
 
-  const filteredTasks = tasks.filter(t => tasksWithDeps.has(taskKey(t)));
+  let filteredTasks = tasks.filter(t => tasksWithDeps.has(taskKey(t)));
+  // If not showing done, also strip individual done tasks from mixed components
+  if(!showDoneTasks){
+    filteredTasks = filteredTasks.filter(t => !isTaskDone(t));
+  }
 
   if(filteredTasks.length === 0){
     depMapNodes.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No dependencies to visualise</div>';
@@ -4134,10 +4159,10 @@ function renderDepMap(){
   }
 
   // Layout parameters
-  const nodeWidth = 160;
-  const nodeHeight = 40;
-  const levelGap = 80;
-  const nodeGap = 24;
+  const nodeWidth = 200;
+  const nodeHeight = 50;
+  const levelGap = 70;
+  const nodeGap = 20;
   const padding = 32;
 
   // Barycenter ordering: minimize edge crossings by ordering nodes based on connected nodes' positions
@@ -4225,17 +4250,15 @@ function renderDepMap(){
     node.style.width = nodeWidth + "px";
     node.dataset.key = taskKey(t);
 
-    // Status styling
-    const proj = getProject(t.projectId);
-    if(proj){
-      const doneKeys = new Set([...proj.done_today, ...proj.done_week].map(x => x.id));
-      if(doneKeys.has(t.id)){
-        node.classList.add("done");
-      } else if(proj.paused.some(x => x.id === t.id)){
-        node.classList.add("paused");
-      } else if(proj.active.some(x => x.id === t.id)){
-        node.classList.add("active");
-      }
+    // Status styling based on blocker count
+    if(isTaskDone(t)){
+      node.classList.add("done");
+    } else {
+      const blockerCount = blockersForTaskKey(t).length;
+      if(blockerCount >= 3) node.classList.add("blocked3");
+      else if(blockerCount === 2) node.classList.add("blocked2");
+      else if(blockerCount === 1) node.classList.add("blocked1");
+      else node.classList.add("active");
     }
 
     node.onclick = () => selectDepMapNode(t, nodePositions);
