@@ -2474,6 +2474,7 @@ $("compactVisToggle").onclick = () => {
   const next = !cur;
   applyCompactVis(next);
   $("compactVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 // Focus button visibility toggle
@@ -2493,6 +2494,7 @@ $("focusVisToggle").onclick = () => {
   const next = !cur;
   applyFocusVis(next);
   $("focusVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 // Mic button visibility toggle
@@ -2513,6 +2515,7 @@ $("micVisToggle").onclick = () => {
   const next = !cur;
   applyMicVis(next);
   $("micVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 // Deps button auto-hide (show only when project has dependencies)
@@ -2542,6 +2545,7 @@ $("depsAlwaysToggle").onclick = () => {
   try{ localStorage.setItem(DEPS_ALWAYS_KEY, next ? "true" : "false"); }catch{}
   $("depsAlwaysToggle").classList.toggle("on", next);
   updateDepsBtnVis();
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
 /* =========================================================
@@ -7279,7 +7283,11 @@ async function pushPersonalToFirestore(){
     currentProject: state.data.currentProject || state.data.projectOrder?.[0] || "default",
     settings: {
       theme: localStorage.getItem(THEME_KEY) || "light",
-      compact: localStorage.getItem(COMPACT_KEY) === "true"
+      compact: localStorage.getItem(COMPACT_KEY) === "true",
+      compactVis: localStorage.getItem(COMPACT_VIS_KEY) !== "false",
+      focusVis: localStorage.getItem(FOCUS_VIS_KEY) !== "false",
+      micVis: localStorage.getItem(MIC_VIS_KEY) !== "false",
+      depsAlways: localStorage.getItem(DEPS_ALWAYS_KEY) === "true"
     }
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
@@ -7305,6 +7313,13 @@ async function pullPersonalFromFirestore(){
     if(rs){
       applyTheme(rs.theme || "light");
       applyCompact(!!rs.compact);
+      if(rs.compactVis !== undefined) applyCompactVis(rs.compactVis);
+      if(rs.focusVis !== undefined) applyFocusVis(rs.focusVis);
+      if(rs.micVis !== undefined) applyMicVis(rs.micVis);
+      if(rs.depsAlways !== undefined){
+        try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
+        updateDepsBtnVis();
+      }
     }
     return true;
   } catch(e){
@@ -7332,6 +7347,12 @@ function startPersonalListener(){
         if(rs){
           applyTheme(rs.theme || "light");
           applyCompact(!!rs.compact);
+          if(rs.compactVis !== undefined) applyCompactVis(rs.compactVis);
+          if(rs.focusVis !== undefined) applyFocusVis(rs.focusVis);
+          if(rs.micVis !== undefined) applyMicVis(rs.micVis);
+          if(rs.depsAlways !== undefined){
+            try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
+          }
         }
         renderAll();
       }
