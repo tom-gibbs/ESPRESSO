@@ -5833,6 +5833,7 @@ function renderFocus(){
       const box = $("focusNotesBox");
       const preview = $("focusNotesRendered");
       const boxWrap = $("focusNotes");
+      const prevNotes = top.notes || "";
       boxWrap.style.display = "";
       box.style.display = "none";
       preview.style.display = "";
@@ -5845,6 +5846,19 @@ function renderFocus(){
         top.notes = existing ? existing + "\n\n" + result.trim() : result.trim();
         box.value = top.notes;
         showNotesPreview();
+        // Add undo button
+        const undoBtn = document.createElement("button");
+        undoBtn.className = "subtle";
+        undoBtn.style.cssText = "margin-top:8px;font-size:12px;padding:4px 10px;border-radius:8px";
+        undoBtn.textContent = "Undo AI breakdown";
+        undoBtn.onclick = () => {
+          top.notes = prevNotes;
+          box.value = prevNotes;
+          if(prevNotes.trim()) showNotesPreview(); else { preview.style.display = "none"; box.style.display = ""; }
+          undoBtn.remove();
+          if(isCoworkMode()) queueCoworkSave(); else queueSave();
+        };
+        preview.after(undoBtn);
         if(isCoworkMode()) queueCoworkSave(); else queueSave();
       } catch(e){
         preview.innerHTML = '<span style="color:#ef4444">AI unavailable. Is Ollama running?</span>';
@@ -7772,7 +7786,7 @@ qsa(".bottomNavBtn").forEach(btn => {
    ========================================================= */
 let ollamaAvailable = false;
 const OLLAMA_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "llama3.1";
+const OLLAMA_MODEL = "llama3.1:8b";
 
 async function detectOllama(){
   try {
