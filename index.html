@@ -1187,7 +1187,6 @@ html[data-theme="light"] .summaryCard h3{ color: rgba(31,35,40,.75); }
 html[data-theme="light"] .summaryRow{ color: var(--muted); }
 .kpi{font-weight:850;color:rgba(255,255,255,.90)}
 html[data-theme="light"] .kpi{ color: var(--text); font-weight:800; }
-.summaryHint{margin-top:12px;font-size:12px;color:var(--muted)}
 .focusPreview{display:flex;gap:10px;align-items:flex-start}
 .focusMark{width:10px;height:10px;border-radius:999px;margin-top:6px;background: var(--accent);opacity:.7;box-shadow:0 0 0 6px rgba(215,176,122,.10);}
 html[data-theme="light"] .focusMark{ box-shadow:none; opacity:.55; }
@@ -1558,6 +1557,33 @@ html[data-theme="light"] .aiCard{background:rgba(255,255,255,.92)}
 .aiGroupHeader{font-weight:700;font-size:14px;margin:12px 0 4px;display:flex;align-items:center;gap:8px}
 
 /* =========================================================
+   SETTINGS OVERLAY
+   ========================================================= */
+.settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;z-index:10001;overflow-y:auto}
+.settingsOverlay.on{display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
+.settingsInner{width:100%;max-width:420px}
+.settingsBox{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px}
+html[data-theme="light"] .settingsBox{background:#fff}
+.settingsHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.settingsHeader h3{margin:0;font-size:18px;font-weight:800}
+.settingsGroup{display:flex;flex-direction:column;gap:2px}
+.settingsRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.settingsRow:last-child{border-bottom:none}
+.settingsLabel{font-size:14px;font-weight:600}
+.themeSwitch{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.themeSwitch svg{width:20px;height:20px}
+.themeSwitch .themeIconMoon{display:none}
+html[data-theme="dark"] .themeSwitch .themeIconSun{display:none}
+html[data-theme="dark"] .themeSwitch .themeIconMoon{display:block}
+.toggleSwitch{position:relative;width:44px;height:26px;border-radius:13px;border:none;background:var(--line);cursor:pointer;padding:0;transition:background .2s}
+.toggleSwitch.on{background:var(--accent)}
+.toggleKnob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggleSwitch.on .toggleKnob{transform:translateX(18px)}
+.settingsDanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.settingsResetBtn{width:100%;padding:10px;border-radius:12px;border:1px solid #ef4444;background:none;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer}
+.settingsResetBtn:hover{background:rgba(239,68,68,.1)}
+
+/* =========================================================
    SWIPE GESTURES (mobile)
    ========================================================= */
 /* Swipe wrapper and actions - hidden by default */
@@ -1668,7 +1694,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .spacer{display:none}
 
   /* Hide buttons that are in bottom nav or not needed on mobile */
-  #syncBtn,#refreshDriveBtn,#focusBtn,#compactToggle,.depMapBtn{display:none}
+  #syncBtn,#focusBtn,.depMapBtn{display:none}
 
   /* Force compact mode on mobile */
   .metaRow{display:none}
@@ -1682,7 +1708,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .actionsTop{justify-content:center;gap:6px}
   button.iconTopBtn{width:36px;height:36px}
   button.iconTopBtn svg{width:16px;height:16px}
-  #resetBtn{padding:8px 10px;font-size:12px}
+  .settingsOverlay.on{padding:20px 10px}
 
   /* Main content area */
   .main{padding:12px}
@@ -1909,16 +1935,10 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <svg id="syncIconCloudPending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><circle cx="12" cy="14" r="1" fill="currentColor"/></svg>
           <svg id="syncIconCloudCheck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M8 14l2 2 4-4"/></svg>
         </button>
-        <button id="refreshDriveBtn" class="subtle iconTopBtn" type="button" title="Refresh sync">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        </button>
-        <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode">▤</button>
-        <button id="themeToggle" class="subtle iconTopBtn" type="button">☀︎ / ☾</button>
-        <button id="forceSaveBtn" class="accent iconTopBtn" type="button" title="Force save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+        <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
         <button id="coworkBtn" class="subtle iconTopBtn" type="button" title="Cowork Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
         <button id="aiBtn" class="subtle iconTopBtn" type="button" title="AI Tools" style="display:none;">&#10022;</button>
         <button id="focusBtn" class="primary iconTopBtn" type="button" title="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
-        <button id="resetBtn" class="danger" type="button">Reset</button>
       </div>
     </div>
 
@@ -2179,7 +2199,6 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 
       <div id="syncSignedIn" style="display:none">
         <div class="syncActions">
-          <button id="syncNowBtn" class="primary" type="button">Sync Now</button>
           <button id="signOutBtn" class="subtle" type="button">Sign Out</button>
         </div>
       </div>
@@ -2263,6 +2282,46 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
       <div id="aiLoading" class="aiLoading" style="display:none;">
         <div class="aiSpinner"></div>
         <span>Thinking...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div class="settingsOverlay" id="settingsOverlay" role="dialog" aria-modal="true">
+  <div class="settingsInner">
+    <div class="settingsBox">
+      <div class="settingsHeader">
+        <h3>Settings</h3>
+        <button id="settingsClose" class="modalClose" type="button">&times;</button>
+      </div>
+
+      <div class="settingsGroup">
+        <div class="settingsRow">
+          <span class="settingsLabel">Theme</span>
+          <button id="themeToggle" class="themeSwitch" type="button" title="Toggle theme">
+            <svg class="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg class="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+        </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Compact Mode</span>
+          <button id="compactToggle" class="toggleSwitch" type="button" title="Toggle compact mode">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Focus Button</span>
+          <button id="focusVisToggle" class="toggleSwitch" type="button" title="Show focus button in toolbar">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settingsDanger">
+        <button id="resetBtn" class="settingsResetBtn" type="button">Reset ESPRESSO</button>
       </div>
     </div>
   </div>
@@ -2354,8 +2413,47 @@ function initCompact(){
 }
 $("compactToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-compact");
-  applyCompact(cur !== "true");
+  const next = cur !== "true";
+  applyCompact(next);
+  $("compactToggle").classList.toggle("on", next);
   if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+};
+
+/* =========================================================
+   SETTINGS OVERLAY
+   ========================================================= */
+const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
+
+function openSettings(){
+  // Sync toggle states before showing
+  $("compactToggle").classList.toggle("on", document.documentElement.getAttribute("data-compact") === "true");
+  const focusVis = localStorage.getItem(FOCUS_VIS_KEY) !== "false";
+  $("focusVisToggle").classList.toggle("on", focusVis);
+  $("settingsOverlay").classList.add("on");
+}
+function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
+
+$("settingsBtn").onclick = openSettings;
+$("settingsClose").onclick = closeSettings;
+$("settingsOverlay").onclick = (e) => { if(e.target === $("settingsOverlay")) closeSettings(); };
+
+// Focus button visibility toggle
+function applyFocusVis(show){
+  $("focusBtn").style.display = show ? "" : "none";
+  try{ localStorage.setItem(FOCUS_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initFocusVis(){
+  try{
+    const saved = localStorage.getItem(FOCUS_VIS_KEY);
+    if(saved === "false"){ applyFocusVis(false); return; }
+  }catch{}
+  applyFocusVis(true);
+}
+$("focusVisToggle").onclick = () => {
+  const cur = localStorage.getItem(FOCUS_VIS_KEY) !== "false";
+  const next = !cur;
+  applyFocusVis(next);
+  $("focusVisToggle").classList.toggle("on", next);
 };
 
 /* =========================================================
@@ -5558,10 +5656,6 @@ function renderSummaryPage(){
   $("summaryPage").appendChild(grid);
 
   enableDragProjects(grid);
-
-  $("summaryPage").insertAdjacentHTML("beforeend",
-    `<div class="summaryHint">Drag tiles to reorder projects. Click ESPRESSO (icon or title) to return to the list.</div>`
-  );
 }
 
 /* =========================================================
@@ -5942,6 +6036,7 @@ focusOverlay.addEventListener("click",(e)=>{ if(e.target===focusOverlay) closeFo
 // Global Escape key to close modals
 document.addEventListener("keydown", (e) => {
   if(e.key === "Escape"){
+    if($("settingsOverlay").classList.contains("on")){ closeSettings(); return; }
     if($("aiOverlay").classList.contains("on")){ closeAiModal(); return; }
     if(focusOverlay.classList.contains("on")){ closeFocus(); return; }
     if(linkOverlay.classList.contains("on")){ closeLinkModal(); return; }
@@ -6589,48 +6684,13 @@ $("resetBtn").onclick = ()=>{
   closeFocus();
 };
 
-$("forceSaveBtn").onclick = async ()=>{
-  const btn = $("forceSaveBtn");
-  if(btn.disabled) return;
-  btn.disabled = true;
-  btn.style.opacity = "0.5";
-
-  try{
-    setStatus("Saving…");
-
-    // Save to localStorage
-    await saveNow({silent:true, force:true});
-
-    // Push to Firestore if signed in
-    if(firebaseUser){
-      setStatus("Syncing…");
-      try {
-        await pushPersonalToFirestore();
-        setStatus("Synced " + fmtSaved(Math.floor(Date.now()/1000)));
-      } catch(e){
-        console.error("Firestore sync error:", e);
-        setStatus("Saved locally (sync failed)");
-      }
-    } else {
-      setStatus("Saved " + fmtSaved(Math.floor(Date.now()/1000)));
-    }
-
-    renderAll();
-  }catch(e){
-    console.error(e);
-    setStatus("SAVE FAILED");
-  }finally{
-    btn.disabled = false;
-    btn.style.opacity = "";
-  }
-};
-
 /* =========================================================
    INIT
    ========================================================= */
 (async function init(){
   initTheme();
   initCompact();
+  initFocusVis();
   if(typeof marked !== "undefined") marked.setOptions({ gfm: true, breaks: true });
   loadViewState();
 
@@ -6707,10 +6767,10 @@ function updateSyncUI(){
 
   let description = "Sign in to sync your tasks across devices";
   if(needsReconnect && hasUser){
-    description = "Session expired - click to reconnect";
+    description = "Session expired — click to reconnect";
     $("googleSignInBtn").textContent = "Reconnect";
   } else if(signedIn){
-    description = "Your tasks are synced";
+    description = "Your tasks sync automatically across devices";
     $("googleSignInBtn").textContent = "Sign in with Google";
   } else {
     $("googleSignInBtn").textContent = "Sign in with Google";
@@ -6888,42 +6948,6 @@ $("signOutBtn").onclick = () => {
   try { localStorage.removeItem("espresso_google_user"); } catch(e){}
   updateSyncUI();
   setSyncStatus("Signed out", "");
-};
-
-$("syncNowBtn").onclick = async () => {
-  const btn = $("syncNowBtn");
-  if(btn.disabled) return;
-  btn.disabled = true;
-
-  setSyncStatus("Syncing...", "");
-  $("syncBtn").classList.add("syncing");
-  try {
-    await pullPersonalFromFirestore();
-    await pushPersonalToFirestore();
-    setSyncStatus("Synced successfully!", "success");
-  } catch(e){
-    setSyncStatus("Sync failed: " + e.message, "error");
-  }
-  $("syncBtn").classList.remove("syncing");
-  updateSyncUI();
-  btn.disabled = false;
-};
-
-// Refresh Google Drive connection
-$("refreshDriveBtn").onclick = async () => {
-  const btn = $("refreshDriveBtn");
-  btn.disabled = true;
-  btn.querySelector("svg").style.animation = "spin 1s linear infinite";
-  setStatus("Refreshing…");
-  try {
-    await pullPersonalFromFirestore();
-    setStatus("Synced");
-    updateSyncUI();
-  } catch(e){
-    setStatus("Refresh failed: " + e.message);
-  }
-  btn.querySelector("svg").style.animation = "";
-  btn.disabled = false;
 };
 
 // Google Drive functions (kept temporarily for one-time migration)
