@@ -334,7 +334,7 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
   padding:10px 24px 10px 12px;
   border-radius:999px;
   border:1px solid var(--line);
-  background:rgba(255,255,255,.06);
+  background:rgba(255,255,255,.12);
   color:var(--text);
   font-size:13px;
   font-weight:600;
@@ -348,6 +348,7 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
   background-repeat:no-repeat;
   background-position:right 8px center;
 }
+.inlineProjectSelect option{background:var(--card);color:var(--text)}
 html[data-theme="light"] .inlineProjectSelect{
   background:rgba(255,255,255,.92);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -5046,6 +5047,11 @@ function addItem(text){
   if(rank !== null && rank >= 1){
     const insertIdx = Math.min(rank - 1, proj.active.length);
     proj.active.splice(insertIdx, 0, newTask);
+    // Also insert into globalOrder for All Projects view
+    if(state.projectId === ALL_ID){
+      const go = state.data.globalOrder.active = state.data.globalOrder.active || [];
+      go.splice(Math.min(rank - 1, go.length), 0, taskKey(newTask));
+    }
   } else {
     proj.active.push(newTask);
   }
