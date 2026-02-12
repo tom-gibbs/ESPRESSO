@@ -2319,6 +2319,13 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
             <span class="toggleKnob"></span>
           </button>
         </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Voice Input</span>
+          <button id="micVisToggle" class="toggleSwitch" type="button" title="Show microphone button">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
       </div>
 
       <div class="settingsDanger">
@@ -2423,6 +2430,7 @@ $("compactToggle").onclick = () => {
    ========================================================= */
 const COMPACT_VIS_KEY = "espresso_compact_vis_v1";
 const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
+const MIC_VIS_KEY = "espresso_mic_vis_v1";
 
 function openSettings(){
   // Sync toggle states before showing
@@ -2430,6 +2438,8 @@ function openSettings(){
   $("compactVisToggle").classList.toggle("on", compactVis);
   const focusVis = localStorage.getItem(FOCUS_VIS_KEY) !== "false";
   $("focusVisToggle").classList.toggle("on", focusVis);
+  const micVis = localStorage.getItem(MIC_VIS_KEY) !== "false";
+  $("micVisToggle").classList.toggle("on", micVis);
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -2474,6 +2484,26 @@ $("focusVisToggle").onclick = () => {
   const next = !cur;
   applyFocusVis(next);
   $("focusVisToggle").classList.toggle("on", next);
+};
+
+// Mic button visibility toggle
+function applyMicVis(show){
+  const btn = $("voiceInputBtn");
+  if(btn) btn.style.display = show ? "" : "none";
+  try{ localStorage.setItem(MIC_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initMicVis(){
+  try{
+    const saved = localStorage.getItem(MIC_VIS_KEY);
+    if(saved === "false"){ applyMicVis(false); return; }
+  }catch{}
+  applyMicVis(true);
+}
+$("micVisToggle").onclick = () => {
+  const cur = localStorage.getItem(MIC_VIS_KEY) !== "false";
+  const next = !cur;
+  applyMicVis(next);
+  $("micVisToggle").classList.toggle("on", next);
 };
 
 /* =========================================================
@@ -6712,6 +6742,7 @@ $("resetBtn").onclick = ()=>{
   initCompact();
   initCompactVis();
   initFocusVis();
+  initMicVis();
   if(typeof marked !== "undefined") marked.setOptions({ gfm: true, breaks: true });
   loadViewState();
 
