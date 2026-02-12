@@ -945,8 +945,7 @@ html[data-theme="light"] .depMapBox{
   display:flex;gap:12px;
   font-size:12px;color:var(--muted);
 }
-.depMapToggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer}
-.depMapToggle input{accent-color:var(--accent);width:14px;height:14px}
+.depMapToggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .legendItem{display:flex;align-items:center;gap:5px}
 .legendDot{width:10px;height:10px;border-radius:3px}
 .legendDot.active{background:#4ade80}
@@ -2149,7 +2148,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
           <span class="legendItem"><span class="legendDot blocked3"></span>3+</span>
           <span class="legendItem"><span class="legendDot done"></span>Done</span>
         </div>
-        <label class="depMapToggle"><input type="checkbox" id="depMapShowDone"><span>Show done</span></label>
+        <div class="depMapToggle"><span>Show done</span><button id="depMapShowDone" class="toggleSwitch" type="button"><span class="toggleKnob"></span></button></div>
       </div>
       <div id="depMapContainer" class="depMapContainer">
         <div id="depMapWrapper" class="depMapWrapper">
@@ -3770,6 +3769,7 @@ function doneKeySetForProject(proj){
   const s = new Set();
   for(const x of proj.done_today) s.add(taskKey(x));
   for(const x of proj.done_week) s.add(taskKey(x));
+  for(const x of (proj.done_history || [])) s.add(taskKey(x));
   return s;
 }
 
@@ -3971,14 +3971,17 @@ const depMapSvg = $("depMapSvg");
 const DEPMAP_DONE_KEY = "espresso_depmap_done_v1";
 
 function openDepMap(){
-  $("depMapShowDone").checked = localStorage.getItem(DEPMAP_DONE_KEY) === "true";
+  const showDone = localStorage.getItem(DEPMAP_DONE_KEY) === "true";
+  $("depMapShowDone").classList.toggle("on", showDone);
   depMapOverlay.classList.add("on");
   document.body.style.overflow = "hidden";
   renderDepMap();
 }
 
-$("depMapShowDone").onchange = () => {
-  try{ localStorage.setItem(DEPMAP_DONE_KEY, $("depMapShowDone").checked ? "true" : "false"); }catch{}
+$("depMapShowDone").onclick = () => {
+  $("depMapShowDone").classList.toggle("on");
+  const isOn = $("depMapShowDone").classList.contains("on");
+  try{ localStorage.setItem(DEPMAP_DONE_KEY, isOn ? "true" : "false"); }catch{}
   renderDepMap();
 };
 
@@ -3996,15 +3999,17 @@ function renderDepMap(){
   depMapNodes.innerHTML = "";
   depMapSvg.innerHTML = "";
 
-  const showDoneTasks = $("depMapShowDone").checked;
+  const showDoneTasks = $("depMapShowDone").classList.contains("on");
 
   // Gather all tasks from current project (or all projects if ALL view)
   const tasks = [];
   const taskMap = new Map();
+  const curPid = isCoworkMode() ? coworkState.projectId : state.projectId;
+  const curData = isCoworkMode() ? coworkState.data : state.data;
 
-  if(state.projectId === ALL_ID){
-    for(const pid of state.data.projectOrder){
-      const proj = getProject(pid);
+  if(curPid === ALL_ID){
+    for(const pid of (curData.projectOrder || Object.keys(curData.projects || {}))){
+      const proj = curData.projects[pid];
       if(!proj) continue;
       for(const t of allTasks(proj)){
         tasks.push(t);
@@ -4012,7 +4017,7 @@ function renderDepMap(){
       }
     }
   } else {
-    const proj = getProject(state.projectId);
+    const proj = curData.projects[curPid];
     if(proj){
       for(const t of allTasks(proj)){
         tasks.push(t);
@@ -4061,9 +4066,9 @@ function renderDepMap(){
 
   // Helper to check if a task is done
   function isTaskDone(t){
-    const proj = getProject(t.projectId);
+    const proj = curData.projects[t.projectId];
     if(!proj) return false;
-    return proj.done_today.some(x => x.id === t.id) || proj.done_week.some(x => x.id === t.id);
+    return proj.done_today.some(x => x.id === t.id) || proj.done_week.some(x => x.id === t.id) || (proj.done_history || []).some(x => x.id === t.id);
   }
 
   for(const t of tasks){
