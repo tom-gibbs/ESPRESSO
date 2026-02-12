@@ -987,8 +987,9 @@ html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
   font-weight:600;
   cursor:pointer;
   overflow:hidden;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  display:flex;align-items:center;justify-content:center;text-align:center;
   line-height:1.3;
+  word-break:break-word;
   transition:all 0.15s ease;
   color:#fff;
 }
@@ -2578,11 +2579,14 @@ function projectHasDeps(){
   const d = isCoworkMode() ? coworkState.data : state.data;
   const pid = isCoworkMode() ? coworkState.projectId : state.projectId;
   if(!d || !d.projects) return false;
-  const proj = d.projects[pid];
-  if(!proj) return false;
-  for(const list of ["active","paused"]){
-    for(const t of (proj[list] || [])){
-      if(Array.isArray(t.dependsOn) && t.dependsOn.length && isBlocked(t)) return true;
+  const pids = (pid === ALL_ID) ? Object.keys(d.projects) : [pid];
+  for(const p of pids){
+    const proj = d.projects[p];
+    if(!proj) continue;
+    for(const list of ["active","paused"]){
+      for(const t of (proj[list] || [])){
+        if(Array.isArray(t.dependsOn) && t.dependsOn.length && isBlocked(t)) return true;
+      }
     }
   }
   return false;
@@ -4213,44 +4217,21 @@ function renderDepMap(){
     400
   );
 
-  // Position nodes
-  const nodePositions = new Map();
-  let currentY = padding;
-
-  for(let lvl = 0; lvl <= maxLevel; lvl++){
-    const group = levelGroups[lvl];
-    const rowWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
-    const startX = (containerWidth - rowWidth) / 2;
-
-    for(let i = 0; i < group.length; i++){
-      const t = group[i];
-      const x = startX + i * (nodeWidth + nodeGap);
-      nodePositions.set(taskKey(t), {x, y: currentY, task: t});
-    }
-    currentY += nodeHeight + levelGap;
-  }
-
-  const containerHeight = currentY - levelGap + padding;
+  // Pass 1: create nodes off-screen to measure heights
   const depMapWrapper = $("depMapWrapper");
   depMapWrapper.style.width = containerWidth + "px";
-  depMapWrapper.style.height = containerHeight + "px";
   depMapNodes.style.width = containerWidth + "px";
-  depMapNodes.style.height = containerHeight + "px";
 
-  // Create node elements
+  const nodeElements = new Map();
   for(const t of tasksToRender){
-    const pos = nodePositions.get(taskKey(t));
-    if(!pos) continue;
-
     const node = document.createElement("div");
     node.className = "depMapNode";
     node.textContent = t.text || "(untitled)";
-    node.style.left = pos.x + "px";
-    node.style.top = pos.y + "px";
     node.style.width = nodeWidth + "px";
+    node.style.position = "absolute";
+    node.style.visibility = "hidden";
     node.dataset.key = taskKey(t);
 
-    // Status styling based on blocker count
     if(isTaskDone(t)){
       node.classList.add("done");
     } else {
@@ -4263,6 +4244,51 @@ function renderDepMap(){
 
     node.onclick = () => selectDepMapNode(t, nodePositions);
     depMapNodes.appendChild(node);
+    nodeElements.set(taskKey(t), node);
+  }
+
+  // Measure actual heights per level row (use tallest in each row)
+  const levelHeights = [];
+  for(let lvl = 0; lvl <= maxLevel; lvl++){
+    let maxH = nodeHeight;
+    for(const t of levelGroups[lvl]){
+      const el = nodeElements.get(taskKey(t));
+      if(el) maxH = Math.max(maxH, el.offsetHeight);
+    }
+    levelHeights.push(maxH);
+  }
+
+  // Position nodes using measured heights
+  const nodePositions = new Map();
+  let currentY = padding;
+
+  for(let lvl = 0; lvl <= maxLevel; lvl++){
+    const group = levelGroups[lvl];
+    const rowHeight = levelHeights[lvl];
+    const rowWidth = group.length * nodeWidth + (group.length - 1) * nodeGap;
+    const startX = (containerWidth - rowWidth) / 2;
+
+    for(let i = 0; i < group.length; i++){
+      const t = group[i];
+      const x = startX + i * (nodeWidth + nodeGap);
+      nodePositions.set(taskKey(t), {x, y: currentY, h: rowHeight, task: t});
+    }
+    currentY += rowHeight + levelGap;
+  }
+
+  const containerHeight = currentY - levelGap + padding;
+  depMapWrapper.style.height = containerHeight + "px";
+  depMapNodes.style.height = containerHeight + "px";
+
+  // Pass 2: position nodes
+  for(const t of tasksToRender){
+    const pos = nodePositions.get(taskKey(t));
+    const el = nodeElements.get(taskKey(t));
+    if(!pos || !el) continue;
+    el.style.left = pos.x + "px";
+    el.style.top = pos.y + "px";
+    el.style.height = pos.h + "px";
+    el.style.visibility = "";
   }
 
   // Draw bezier curves with arrowheads
@@ -4295,7 +4321,7 @@ function renderDepMap(){
       if(transitiveEdges.has(depKey + "|" + toKey)) continue;
 
       const x1 = fromPos.x + nodeWidth / 2;
-      const y1 = fromPos.y + nodeHeight;
+      const y1 = fromPos.y + fromPos.h;
       const x2 = toPos.x + nodeWidth / 2;
       const y2 = toPos.y;
 
