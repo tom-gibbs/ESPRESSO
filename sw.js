@@ -1,4 +1,4 @@
-const CACHE_NAME = 'espresso-v34';
+const CACHE_NAME = 'espresso-v35';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

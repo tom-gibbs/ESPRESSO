@@ -1546,6 +1546,16 @@ html[data-theme="light"] .aiBox{background:#fff}
 html[data-theme="light"] .aiSuggestion{background:rgba(255,255,255,.92)}
 .aiSuggestion:hover{border-color:var(--accent)}
 .aiSuggestion .aiSugText{flex:1;font-size:13px}
+.aiActionBar{display:flex;gap:8px;margin:12px 0 8px;justify-content:flex-end}
+.aiActionBar button{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600}
+.aiCard{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);margin:6px 0;display:flex;align-items:flex-start;gap:10px}
+html[data-theme="light"] .aiCard{background:rgba(255,255,255,.92)}
+.aiCard label{display:flex;align-items:flex-start;gap:8px;flex:1;cursor:pointer;font-size:13px}
+.aiCard input[type="checkbox"]{margin-top:2px;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0}
+.aiCardReason{color:var(--muted);font-size:12px;margin-top:2px}
+.aiOrderNum{font-weight:800;font-size:14px;color:var(--accent);min-width:20px}
+.aiColorDot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.aiGroupHeader{font-weight:700;font-size:14px;margin:12px 0 4px;display:flex;align-items:center;gap:8px}
 
 /* =========================================================
    SWIPE GESTURES (mobile)
@@ -2238,7 +2248,10 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
     <div class="aiBox">
       <div class="aiHeader">
         <h3>AI Tools</h3>
-        <button id="aiClose" class="modalClose" type="button">&times;</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button id="aiCopyBtn" class="subtle" type="button" title="Copy to clipboard" style="display:none;width:28px;height:28px;padding:4px;border-radius:8px;border:1px solid var(--line)"></button>
+          <button id="aiClose" class="modalClose" type="button">&times;</button>
+        </div>
       </div>
       <div class="aiTabs">
         <button class="aiTab active" data-ai-tab="summary">Summary</button>
@@ -2390,7 +2403,8 @@ const ICONS = {
   pencil:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`,
   chevron:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`,
   subtask:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12h6"/><path d="M16 6h6"/><path d="M3 6h2v12h4"/><path d="M9 18h10"/></svg>`,
-  sparkles:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>`
+  sparkles:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>`,
+  clipboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`
 };
 
 /* Color palette for task tagging */
@@ -7786,16 +7800,21 @@ qsa(".bottomNavBtn").forEach(btn => {
    ========================================================= */
 let ollamaAvailable = false;
 const OLLAMA_URL = "http://localhost:11434";
+let OLLAMA_MODEL_LIGHT = "llama3.2:latest";
 const OLLAMA_MODEL_FAST = "llama3.2:latest";
 const OLLAMA_MODEL_FULL = "llama3.1:8b";
+const COLOR_NAME_MAP = {red:"#ef4444",orange:"#f97316",yellow:"#eab308",green:"#22c55e",blue:"#3b82f6",purple:"#8b5cf6",pink:"#ec4899"};
+let _aiLastRawResult = "";
 
 async function detectOllama(){
   try {
     const r = await fetch(OLLAMA_URL + "/api/tags", { signal: AbortSignal.timeout(2000) });
-    if(r.ok){
-      ollamaAvailable = true;
-      $("aiBtn").style.display = "";
-    }
+    if(!r.ok) return;
+    ollamaAvailable = true;
+    $("aiBtn").style.display = "";
+    const data = await r.json();
+    const names = (data.models || []).map(m => m.name || "");
+    if(names.some(n => n.startsWith("llama3.2:1b"))) OLLAMA_MODEL_LIGHT = "llama3.2:1b";
   } catch(e){}
 }
 
@@ -7811,25 +7830,60 @@ async function ollamaGenerate(prompt, system, model){
   return data.response || "";
 }
 
+function parseAiJson(text){
+  try { return JSON.parse(text); } catch(e){}
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if(m) try { return JSON.parse(m[1]); } catch(e){}
+  // Try to find JSON object in text
+  const m2 = text.match(/\{[\s\S]*\}/);
+  if(m2) try { return JSON.parse(m2[0]); } catch(e){}
+  return null;
+}
+
 function getProjectName(pid){
   const d = isCoworkMode() ? coworkState.data : state.data;
   return d?.projects?.[pid]?.name || "";
 }
 
+function gatherTaskRefs(lists){
+  const d = isCoworkMode() ? coworkState.data : state.data;
+  const refs = [];
+  for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
+    const proj = d.projects[pid];
+    if(!proj) continue;
+    for(const listKey of lists){
+      (proj[listKey] || []).forEach(t => refs.push({task: t, pid, listKey, project: proj.name}));
+    }
+  }
+  return refs;
+}
+
 /* AI overlay open/close */
 function openAiModal(){ $("aiOverlay").classList.add("on"); document.body.style.overflow = "hidden"; }
-function closeAiModal(){ $("aiOverlay").classList.remove("on"); document.body.style.overflow = ""; }
+function closeAiModal(){ $("aiOverlay").classList.remove("on"); document.body.style.overflow = ""; $("aiCopyBtn").style.display = "none"; }
 $("aiBtn").onclick = openAiModal;
 $("aiClose").onclick = closeAiModal;
 $("aiOverlay").addEventListener("click", (e) => {
   if(e.target === $("aiOverlay") || e.target.classList.contains("aiInner")) closeAiModal();
 });
 
+/* Copy button in header */
+$("aiCopyBtn").innerHTML = ICONS.clipboard;
+$("aiCopyBtn").onclick = async function(){
+  try {
+    await navigator.clipboard.writeText(_aiLastRawResult);
+    this.title = "Copied!";
+    this.style.borderColor = "var(--accent)";
+    setTimeout(() => { this.title = "Copy to clipboard"; this.style.borderColor = ""; }, 1500);
+  } catch(e){}
+};
+
 /* AI tab switching */
 qsa(".aiTab").forEach(tab => {
   tab.onclick = () => {
     qsa(".aiTab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
+    $("aiCopyBtn").style.display = "none";
     const tabName = tab.dataset.aiTab;
     if(tabName === "summary") showAiSummary();
     else if(tabName === "organize") showAiOrganize();
@@ -7854,6 +7908,7 @@ async function showAiSummary(){
 
   if(!todayTasks.length && !weekTasks.length){
     content.innerHTML = '<div class="aiPlaceholder">No completed tasks to summarize yet. Get some tasks done first!</div>';
+    $("aiCopyBtn").style.display = "none";
     return;
   }
 
@@ -7867,20 +7922,19 @@ async function showAiSummary(){
   async function generateSummary(tasks, period){
     if(!tasks.length){
       $("aiSummaryResult").innerHTML = '<div class="aiPlaceholder">No tasks completed ' + period + '.</div>';
+      $("aiCopyBtn").style.display = "none";
       return;
     }
     $("aiSummaryResult").innerHTML = '';
+    $("aiCopyBtn").style.display = "none";
     loading.style.display = "";
     try {
       const taskList = tasks.map(t => "- " + t.text + " (" + t.project + ")").join("\n");
       const prompt = "Here are the tasks I completed " + period + ":\n" + taskList + "\n\nWrite a brief, upbeat summary suitable for a standup or weekly review. Group by project if there are multiple. Keep it concise.";
-      const result = await ollamaGenerate(prompt, "You are a concise standup assistant. Write clear summaries in markdown. Be brief and positive.");
-      const resultEl = $("aiSummaryResult");
-      resultEl.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="subtle aiCopyBtn" style="font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer">Copy</button></div>' + renderNotesMarkdown(result);
-      resultEl.querySelector(".aiCopyBtn").onclick = async function(){
-        try { await navigator.clipboard.writeText(result); this.textContent = "Copied!"; setTimeout(()=>{ this.textContent = "Copy"; }, 1500); }
-        catch(e){ this.textContent = "Failed"; }
-      };
+      const result = await ollamaGenerate(prompt, "You are a concise standup assistant. Write clear summaries in markdown. Be brief and positive.", OLLAMA_MODEL_LIGHT);
+      _aiLastRawResult = result;
+      $("aiSummaryResult").innerHTML = renderNotesMarkdown(result);
+      $("aiCopyBtn").style.display = "";
     } catch(e){
       $("aiSummaryResult").innerHTML = '<span style="color:#ef4444">AI unavailable. Is Ollama running?</span>';
     }
@@ -7904,6 +7958,7 @@ async function showAiSummary(){
 /* Organize tab */
 function showAiOrganize(){
   const content = $("aiContent");
+  $("aiCopyBtn").style.display = "none";
   content.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
     '<button class="aiSuggestion" id="aiMomentum"><div class="aiSugText"><strong>Momentum Builder</strong><br><span style="color:var(--muted);font-size:12px">Find quick wins to build momentum, then your main task</span></div></button>' +
@@ -7918,21 +7973,13 @@ function showAiOrganize(){
   $("aiStale").onclick = runStaleAudit;
 }
 
+/* Momentum Builder — reorder tasks */
 async function runMomentumBuilder(){
   const content = $("aiContent");
   const loading = $("aiLoading");
-  const d = isCoworkMode() ? coworkState.data : state.data;
+  const taskRefs = gatherTaskRefs(["active"]);
 
-  const tasks = [];
-  for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
-    const proj = d.projects[pid];
-    if(!proj) continue;
-    (proj.active || []).forEach(t => {
-      tasks.push({ text: t.text, project: proj.name, est: t.estimateMins || 0 });
-    });
-  }
-
-  if(tasks.length < 2){
+  if(taskRefs.length < 2){
     content.innerHTML = '<div class="aiPlaceholder">Need at least 2 active tasks to suggest an order.</div>';
     return;
   }
@@ -7941,29 +7988,68 @@ async function runMomentumBuilder(){
   content.innerHTML = '<div class="aiResult" id="aiOrganizeResult"></div>';
 
   try {
-    const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text + (t.est ? " (~" + t.est + "min)" : "")).join("\n");
-    const prompt = "Here are my active tasks:\n" + taskList + "\n\nSuggest an order to tackle them that builds momentum. Start with 2-3 quick wins (tasks that sound simple/fast), then transition to the most important deep work. Return a numbered list with brief reasoning for the order.";
-    const result = await ollamaGenerate(prompt, "You are a productivity coach specializing in ADHD-friendly work strategies. Be concise and actionable.", OLLAMA_MODEL_FULL);
-    $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
+    const taskList = taskRefs.map((r,i) => (i+1) + ". [" + r.project + "] " + r.task.text + (r.task.estimateMins ? " (~" + r.task.estimateMins + "min)" : "")).join("\n");
+    const prompt = "Here are my active tasks:\n" + taskList + "\n\nSuggest an order to tackle them. Start with quick wins then deep work.\nReturn ONLY valid JSON: {\"order\": [3, 1, 5, 2, 4], \"reasons\": [\"reason for each task in the suggested order\"]}";
+    const result = await ollamaGenerate(prompt, "You are a productivity coach. Return ONLY valid JSON, no other text.", OLLAMA_MODEL_FULL);
+    const parsed = parseAiJson(result);
+
+    if(parsed && Array.isArray(parsed.order)){
+      let html = '<div style="margin-bottom:8px;font-weight:600;font-size:14px">Suggested order:</div>';
+      parsed.order.forEach((idx, pos) => {
+        const ref = taskRefs[idx - 1];
+        if(!ref) return;
+        const reason = (parsed.reasons && parsed.reasons[pos]) || "";
+        html += '<div class="aiCard"><span class="aiOrderNum">' + (pos+1) + '</span><div style="flex:1"><div style="font-size:13px"><strong>' + escapeHtml(ref.task.text) + '</strong> <span style="color:var(--muted);font-size:11px">[' + escapeHtml(ref.project) + ']</span></div>' + (reason ? '<div class="aiCardReason">' + escapeHtml(reason) + '</div>' : '') + '</div></div>';
+      });
+      html += '<div class="aiActionBar"><button class="subtle" id="aiRejectOrder">Keep Current</button><button class="primary" id="aiApplyOrder">Apply This Order</button></div>';
+      $("aiOrganizeResult").innerHTML = html;
+
+      $("aiRejectOrder").onclick = showAiOrganize;
+      $("aiApplyOrder").onclick = () => {
+        const d = isCoworkMode() ? coworkState.data : state.data;
+        // Group reorder by project
+        const byProject = {};
+        parsed.order.forEach(idx => {
+          const ref = taskRefs[idx - 1];
+          if(!ref) return;
+          if(!byProject[ref.pid]) byProject[ref.pid] = [];
+          byProject[ref.pid].push(ref.task);
+        });
+        // Also add any tasks not in the order (keep at end)
+        taskRefs.forEach(ref => {
+          if(!parsed.order.includes(taskRefs.indexOf(ref) + 1)){
+            if(!byProject[ref.pid]) byProject[ref.pid] = [];
+            byProject[ref.pid].push(ref.task);
+          }
+        });
+        for(const pid of Object.keys(byProject)){
+          const proj = d.projects[pid];
+          if(!proj) continue;
+          const ordered = byProject[pid];
+          const remaining = proj.active.filter(t => !ordered.find(o => o.id === t.id));
+          proj.active = [...ordered, ...remaining];
+        }
+        if(isCoworkMode()) queueCoworkSave(); else queueSave();
+        renderAll();
+        content.innerHTML = '<div class="aiPlaceholder" style="color:var(--accent)">Order applied!</div>';
+        setTimeout(showAiOrganize, 1500);
+      };
+    } else {
+      $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result) + '<div class="aiCardReason" style="margin-top:8px">Could not parse structured response. Showing raw suggestions.</div>';
+    }
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
   }
   loading.style.display = "none";
 }
 
+/* Similar Tasks — apply colors */
 async function runSimilarTasks(){
   const content = $("aiContent");
   const loading = $("aiLoading");
-  const d = isCoworkMode() ? coworkState.data : state.data;
+  const taskRefs = gatherTaskRefs(["active"]);
 
-  const tasks = [];
-  for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
-    const proj = d.projects[pid];
-    if(!proj) continue;
-    (proj.active || []).forEach(t => tasks.push({ text: t.text, project: proj.name }));
-  }
-
-  if(tasks.length < 3){
+  if(taskRefs.length < 3){
     content.innerHTML = '<div class="aiPlaceholder">Need at least 3 active tasks to find groups.</div>';
     return;
   }
@@ -7972,30 +8058,57 @@ async function runSimilarTasks(){
   content.innerHTML = '<div class="aiResult" id="aiOrganizeResult"></div>';
 
   try {
-    const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text).join("\n");
-    const prompt = "Group these tasks by theme/topic. For each group, suggest a color from this list: red, orange, yellow, green, blue, purple, pink. Output as markdown with group headers and the task numbers in each group.\n\nTasks:\n" + taskList;
-    const result = await ollamaGenerate(prompt, "You are a task organization assistant. Group tasks by theme concisely.", OLLAMA_MODEL_FULL);
-    $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
+    const taskList = taskRefs.map((r,i) => (i+1) + ". [" + r.project + "] " + r.task.text).join("\n");
+    const prompt = "Group these tasks by theme/topic. For each group suggest a color.\nTasks:\n" + taskList + "\n\nReturn ONLY valid JSON: {\"groups\": [{\"name\": \"Group Name\", \"color\": \"red\", \"tasks\": [1, 3, 5]}]}\nColors must be from: red, orange, yellow, green, blue, purple, pink";
+    const result = await ollamaGenerate(prompt, "You are a task organization assistant. Return ONLY valid JSON, no other text.", OLLAMA_MODEL_FULL);
+    const parsed = parseAiJson(result);
+
+    if(parsed && Array.isArray(parsed.groups)){
+      let html = '';
+      parsed.groups.forEach((group, gi) => {
+        const hex = COLOR_NAME_MAP[group.color] || COLOR_NAME_MAP.blue;
+        html += '<div class="aiGroupHeader"><span class="aiColorDot" style="background:' + hex + '"></span>' + escapeHtml(group.name || "Group " + (gi+1)) + ' <span style="color:var(--muted);font-size:12px;font-weight:400">(' + (group.color || "blue") + ')</span></div>';
+        (group.tasks || []).forEach(idx => {
+          const ref = taskRefs[idx - 1];
+          if(!ref) return;
+          html += '<div class="aiCard"><label><input type="checkbox" checked data-group="' + gi + '" data-task="' + (idx-1) + '"><div><div>' + escapeHtml(ref.task.text) + '</div><div class="aiCardReason">[' + escapeHtml(ref.project) + ']</div></div></label></div>';
+        });
+      });
+      html += '<div class="aiActionBar"><button class="subtle" id="aiRejectColors">Cancel</button><button class="primary" id="aiApplyColors">Apply Colors</button></div>';
+      $("aiOrganizeResult").innerHTML = html;
+
+      $("aiRejectColors").onclick = showAiOrganize;
+      $("aiApplyColors").onclick = () => {
+        let applied = 0;
+        $("aiOrganizeResult").querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+          const gi = parseInt(cb.dataset.group);
+          const ti = parseInt(cb.dataset.task);
+          const ref = taskRefs[ti];
+          const group = parsed.groups[gi];
+          if(!ref || !group) return;
+          ref.task.color = COLOR_NAME_MAP[group.color] || null;
+          applied++;
+        });
+        if(applied){ if(isCoworkMode()) queueCoworkSave(); else queueSave(); renderAll(); }
+        content.innerHTML = '<div class="aiPlaceholder" style="color:var(--accent)">' + applied + ' task' + (applied !== 1 ? 's' : '') + ' colored!</div>';
+        setTimeout(showAiOrganize, 1500);
+      };
+    } else {
+      $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result) + '<div class="aiCardReason" style="margin-top:8px">Could not parse structured response. Showing raw suggestions.</div>';
+    }
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
   }
   loading.style.display = "none";
 }
 
+/* Suggest Dependencies — add links */
 async function runSuggestDeps(){
   const content = $("aiContent");
   const loading = $("aiLoading");
-  const d = isCoworkMode() ? coworkState.data : state.data;
+  const taskRefs = gatherTaskRefs(["active", "paused"]);
 
-  const tasks = [];
-  for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
-    const proj = d.projects[pid];
-    if(!proj) continue;
-    (proj.active || []).forEach(t => tasks.push({ text: t.text, project: proj.name }));
-    (proj.paused || []).forEach(t => tasks.push({ text: t.text, project: proj.name }));
-  }
-
-  if(tasks.length < 2){
+  if(taskRefs.length < 2){
     content.innerHTML = '<div class="aiPlaceholder">Need at least 2 tasks to suggest dependencies.</div>';
     return;
   }
@@ -8004,37 +8117,79 @@ async function runSuggestDeps(){
   content.innerHTML = '<div class="aiResult" id="aiOrganizeResult"></div>';
 
   try {
-    const taskList = tasks.map((t,i) => (i+1) + ". [" + t.project + "] " + t.text).join("\n");
-    const prompt = "Look at these tasks and suggest which ones logically need to be completed before others. Only suggest dependencies that are clearly logical (not just nice-to-have ordering). Output as: \"Task X should be done before Task Y because...\". Be selective — only suggest obvious dependencies.\n\nTasks:\n" + taskList;
-    const result = await ollamaGenerate(prompt, "You are a project planning assistant. Only suggest clear, logical dependencies. Be conservative.", OLLAMA_MODEL_FULL);
-    $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
+    const taskList = taskRefs.map((r,i) => (i+1) + ". [" + r.project + "] " + r.task.text).join("\n");
+    const prompt = "Look at these tasks and suggest which must be done before others.\nTasks:\n" + taskList + "\n\nReturn ONLY valid JSON: {\"deps\": [{\"before\": 1, \"after\": 3, \"reason\": \"brief reason\"}]}\nOnly suggest clear logical dependencies. Be selective.";
+    const result = await ollamaGenerate(prompt, "You are a project planning assistant. Return ONLY valid JSON, no other text. Be conservative.", OLLAMA_MODEL_FULL);
+    const parsed = parseAiJson(result);
+
+    if(parsed && Array.isArray(parsed.deps) && parsed.deps.length > 0){
+      let html = '<div style="margin-bottom:8px;font-weight:600;font-size:14px">Suggested dependencies:</div>';
+      parsed.deps.forEach((dep, di) => {
+        const beforeRef = taskRefs[dep.before - 1];
+        const afterRef = taskRefs[dep.after - 1];
+        if(!beforeRef || !afterRef) return;
+        html += '<div class="aiCard"><label><input type="checkbox" checked data-dep="' + di + '"><div><div style="font-size:13px"><strong>' + escapeHtml(beforeRef.task.text) + '</strong> <span style="color:var(--muted)">&rarr;</span> <strong>' + escapeHtml(afterRef.task.text) + '</strong></div>' + (dep.reason ? '<div class="aiCardReason">' + escapeHtml(dep.reason) + '</div>' : '') + '</div></label></div>';
+      });
+      html += '<div class="aiActionBar"><button class="subtle" id="aiRejectDeps">Skip</button><button class="primary" id="aiApplyDeps">Add Selected</button></div>';
+      $("aiOrganizeResult").innerHTML = html;
+
+      $("aiRejectDeps").onclick = showAiOrganize;
+      $("aiApplyDeps").onclick = () => {
+        let applied = 0;
+        $("aiOrganizeResult").querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+          const di = parseInt(cb.dataset.dep);
+          const dep = parsed.deps[di];
+          if(!dep) return;
+          const beforeRef = taskRefs[dep.before - 1];
+          const afterRef = taskRefs[dep.after - 1];
+          if(!beforeRef || !afterRef) return;
+          const bKey = taskKey(beforeRef.task);
+          if(!afterRef.task.dependsOn) afterRef.task.dependsOn = [];
+          if(!afterRef.task.dependsOn.includes(bKey)){
+            afterRef.task.dependsOn.push(bKey);
+            applied++;
+          }
+        });
+        if(applied){
+          enforceDependenciesAllProjects();
+          if(isCoworkMode()) queueCoworkSave(); else queueSave();
+          renderAll();
+        }
+        content.innerHTML = '<div class="aiPlaceholder" style="color:var(--accent)">' + applied + ' dependenc' + (applied !== 1 ? 'ies' : 'y') + ' added!</div>';
+        setTimeout(showAiOrganize, 1500);
+      };
+    } else if(parsed && Array.isArray(parsed.deps) && parsed.deps.length === 0){
+      $("aiOrganizeResult").innerHTML = '<div class="aiPlaceholder">No obvious dependencies found between your tasks.</div>';
+    } else {
+      $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result) + '<div class="aiCardReason" style="margin-top:8px">Could not parse structured response. Showing raw suggestions.</div>';
+    }
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
   }
   loading.style.display = "none";
 }
 
+/* Stale Task Audit — delete/keep */
 async function runStaleAudit(){
   const content = $("aiContent");
   const loading = $("aiLoading");
   const d = isCoworkMode() ? coworkState.data : state.data;
   const twoWeeksAgo = Date.now() - 14 * 86400000;
 
-  const stale = [];
+  const staleRefs = [];
   for(const pid of (d.projectOrder || Object.keys(d.projects || {}))){
     const proj = d.projects[pid];
     if(!proj) continue;
-    (proj.active || []).forEach(t => {
-      if(t.createdAt && t.createdAt < twoWeeksAgo)
-        stale.push({ text: t.text, project: proj.name, age: Math.floor((Date.now() - t.createdAt) / 86400000) });
-    });
-    (proj.paused || []).forEach(t => {
-      if(t.createdAt && t.createdAt < twoWeeksAgo)
-        stale.push({ text: t.text, project: proj.name, age: Math.floor((Date.now() - t.createdAt) / 86400000) });
-    });
+    for(const listKey of ["active", "paused"]){
+      (proj[listKey] || []).forEach(t => {
+        if(t.createdAt && t.createdAt < twoWeeksAgo){
+          staleRefs.push({task: t, pid, listKey, project: proj.name, age: Math.floor((Date.now() - t.createdAt) / 86400000)});
+        }
+      });
+    }
   }
 
-  if(!stale.length){
+  if(!staleRefs.length){
     content.innerHTML = '<div class="aiPlaceholder">No stale tasks! Everything is under 2 weeks old.</div>';
     return;
   }
@@ -8043,10 +8198,41 @@ async function runStaleAudit(){
   content.innerHTML = '<div class="aiResult" id="aiOrganizeResult"></div>';
 
   try {
-    const taskList = stale.map(t => '- "' + t.text + '" [' + t.project + '] — ' + t.age + ' days old').join("\n");
-    const prompt = "These tasks have been sitting for over 2 weeks:\n" + taskList + "\n\nFor each task, give a brief recommendation: still relevant? should it be broken down into smaller tasks? should it be rephrased to be more actionable? or should it be deleted? Be honest and direct.";
-    const result = await ollamaGenerate(prompt, "You are a productivity coach. Be direct and honest. Help the user decide what to keep, rework, or drop.", OLLAMA_MODEL_FULL);
-    $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result);
+    const taskList = staleRefs.map((r,i) => (i+1) + '. "' + r.task.text + '" [' + r.project + '] — ' + r.age + ' days old').join("\n");
+    const prompt = "These tasks have been sitting for over 2 weeks:\n" + taskList + "\n\nFor each task, recommend an action.\nReturn ONLY valid JSON: {\"tasks\": [{\"index\": 1, \"action\": \"delete\", \"reason\": \"brief reason\"}, {\"index\": 2, \"action\": \"keep\", \"reason\": \"brief reason\"}]}\nActions must be: delete, keep, or breakdown";
+    const result = await ollamaGenerate(prompt, "You are a productivity coach. Return ONLY valid JSON, no other text. Be direct.", OLLAMA_MODEL_FULL);
+    const parsed = parseAiJson(result);
+
+    if(parsed && Array.isArray(parsed.tasks)){
+      let html = '<div style="margin-bottom:8px;font-weight:600;font-size:14px">Recommendations:</div>';
+      parsed.tasks.forEach(rec => {
+        const ref = staleRefs[rec.index - 1];
+        if(!ref) return;
+        const isDelete = rec.action === "delete";
+        const actionLabel = rec.action === "delete" ? "Delete" : rec.action === "breakdown" ? "Break down" : "Keep";
+        const actionColor = isDelete ? "#ef4444" : rec.action === "breakdown" ? "var(--accent)" : "var(--muted)";
+        html += '<div class="aiCard"><label><input type="checkbox" ' + (isDelete ? 'checked ' : '') + 'data-idx="' + (rec.index - 1) + '"><div><div style="font-size:13px"><strong>' + escapeHtml(ref.task.text) + '</strong> <span style="font-size:11px;color:var(--muted)">' + ref.age + 'd old</span></div><div class="aiCardReason"><span style="color:' + actionColor + ';font-weight:600">' + actionLabel + '</span> — ' + escapeHtml(rec.reason || "") + '</div></div></label></div>';
+      });
+      html += '<div class="aiActionBar"><button class="subtle" id="aiRejectStale">Keep All</button><button class="danger" id="aiApplyStale">Delete Selected</button></div>';
+      $("aiOrganizeResult").innerHTML = html;
+
+      $("aiRejectStale").onclick = showAiOrganize;
+      $("aiApplyStale").onclick = () => {
+        const toDelete = [];
+        $("aiOrganizeResult").querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+          const idx = parseInt(cb.dataset.idx);
+          const ref = staleRefs[idx];
+          if(ref) toDelete.push(ref.task);
+        });
+        if(!toDelete.length){ showAiOrganize(); return; }
+        if(!confirm("Delete " + toDelete.length + " task" + (toDelete.length !== 1 ? "s" : "") + "?")) return;
+        toDelete.forEach(t => deleteTask(t));
+        content.innerHTML = '<div class="aiPlaceholder" style="color:var(--accent)">' + toDelete.length + ' task' + (toDelete.length !== 1 ? 's' : '') + ' deleted!</div>';
+        setTimeout(showAiOrganize, 1500);
+      };
+    } else {
+      $("aiOrganizeResult").innerHTML = renderNotesMarkdown(result) + '<div class="aiCardReason" style="margin-top:8px">Could not parse structured response. Showing raw suggestions.</div>';
+    }
   } catch(e){
     $("aiOrganizeResult").innerHTML = '<span style="color:#ef4444">AI unavailable.</span>';
   }
