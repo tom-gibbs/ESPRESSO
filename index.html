@@ -2274,7 +2274,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
       </div>
       <div class="aiTabs">
-        <button class="aiTab active" data-ai-tab="summary">Summary</button>
+        <button class="aiTab" data-ai-tab="summary">Summary</button>
         <button class="aiTab" data-ai-tab="organize">Organize</button>
       </div>
       <div id="aiContent" class="aiContent">
@@ -7904,7 +7904,13 @@ function gatherTaskRefs(lists){
 }
 
 /* AI overlay open/close */
-function openAiModal(){ $("aiOverlay").classList.add("on"); document.body.style.overflow = "hidden"; }
+function openAiModal(){
+  qsa(".aiTab").forEach(b => b.classList.remove("active"));
+  $("aiContent").innerHTML = '<div class="aiPlaceholder">Select a tool above to get started.</div>';
+  $("aiCopyBtn").style.display = "none";
+  $("aiOverlay").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
 function closeAiModal(){ $("aiOverlay").classList.remove("on"); document.body.style.overflow = ""; $("aiCopyBtn").style.display = "none"; }
 $("aiBtn").onclick = openAiModal;
 $("aiClose").onclick = closeAiModal;
