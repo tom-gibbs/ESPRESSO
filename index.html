@@ -1947,7 +1947,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 
         <div id="sectionHeaderWrap" class="sectionHeaderWrap">
           <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button" title="Switch project">WORK</button>
-          <button id="depMapBtn" class="depMapBtn" type="button" title="Dependency map">
+          <button id="depMapBtn" class="depMapBtn" type="button" title="Dependency map" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/><path d="M12 12v3"/></svg>
           </button>
           <button id="aiBtn" class="depMapBtn" type="button" title="AI Tools" style="display:none;">&#10022;</button>
@@ -2518,22 +2518,22 @@ $("micVisToggle").onclick = () => {
 // Deps button auto-hide (show only when project has dependencies)
 const DEPS_ALWAYS_KEY = "espresso_deps_always_v1";
 
-function updateDepsBtnVis(){
-  const alwaysShow = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
-  if(alwaysShow){ $("depMapBtn").style.display = ""; return; }
+function projectHasDeps(){
   const d = isCoworkMode() ? coworkState.data : state.data;
   const pid = isCoworkMode() ? coworkState.projectId : state.projectId;
+  if(!d || !d.projects) return false;
   const proj = d.projects[pid];
-  let hasDeps = false;
-  if(proj){
-    for(const list of ["active","paused"]){
-      for(const t of (proj[list] || [])){
-        if(Array.isArray(t.dependsOn) && t.dependsOn.length){ hasDeps = true; break; }
-      }
-      if(hasDeps) break;
+  if(!proj) return false;
+  for(const list of ["active","paused"]){
+    for(const t of (proj[list] || [])){
+      if(Array.isArray(t.dependsOn) && t.dependsOn.length) return true;
     }
   }
-  $("depMapBtn").style.display = hasDeps ? "" : "none";
+  return false;
+}
+function updateDepsBtnVis(){
+  const alwaysShow = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
+  $("depMapBtn").style.display = (alwaysShow || projectHasDeps()) ? "" : "none";
 }
 
 $("depsAlwaysToggle").onclick = () => {
