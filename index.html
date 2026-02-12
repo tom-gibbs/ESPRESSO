@@ -8018,11 +8018,20 @@ async function showAiSummary(){
 
   const d = isCoworkMode() ? coworkState.data : state.data;
   const curPid = isCoworkMode() ? coworkState.projectId : state.projectId;
-  const curProj = d.projects[curPid];
-  const projName = curProj ? (curProj.name || curPid) : "this project";
+  const isAll = curPid === ALL_ID;
+  const curProj = isAll ? null : (d.projects[curPid] || null);
+  const projName = isAll ? "All Projects" : (curProj ? (curProj.name || curPid) : "this project");
 
-  const todayTasks = (curProj && curProj.done_today || []).map(t => t.text);
-  const weekTasks = (curProj && curProj.done_week || []).map(t => t.text);
+  const todayTasks = [];
+  const weekTasks = [];
+  const pids = isAll ? (d.projectOrder || Object.keys(d.projects || {})) : [curPid];
+  for(const pid of pids){
+    const proj = d.projects[pid];
+    if(!proj) continue;
+    const label = isAll ? proj.name || pid : null;
+    (proj.done_today || []).forEach(t => todayTasks.push(label ? t.text + " [" + label + "]" : t.text));
+    (proj.done_week || []).forEach(t => weekTasks.push(label ? t.text + " [" + label + "]" : t.text));
+  }
 
   if(!todayTasks.length && !weekTasks.length){
     content.innerHTML = '<div class="aiPlaceholder">No completed tasks in ' + projName + ' to summarize yet.</div>';
@@ -8048,7 +8057,9 @@ async function showAiSummary(){
     loading.style.display = "";
     try {
       const taskList = tasks.map(t => "- " + t).join("\n");
-      const prompt = "Project: " + projName + "\nTasks I completed " + period + ":\n" + taskList + "\n\nSummarise what I got done " + period + " on this project. Write in first person (\"I did X\", \"I completed Y\"). Be matter-of-fact and specific. No filler or cheerfulness. Keep it concise.";
+      const ctx = isAll ? "Across all my projects" : ("Project: " + projName);
+      const groupNote = isAll ? " Group by project." : "";
+      const prompt = ctx + "\nTasks I completed " + period + ":\n" + taskList + "\n\nSummarise what I got done " + period + "." + groupNote + " Write in first person (\"I did X\", \"I completed Y\"). Be matter-of-fact and specific. No filler or cheerfulness. Keep it concise.";
       const result = await ollamaGenerate(prompt, "You write brief, matter-of-fact first-person summaries. No fluff, no encouragement, just state what was accomplished. Use markdown for structure if needed.", OLLAMA_MODEL_LIGHT);
       _aiLastRawResult = result;
       $("aiSummaryResult").innerHTML = renderNotesMarkdown(result);
