@@ -6239,6 +6239,51 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// VS Code-style line copy/cut in text fields
+document.addEventListener("keydown", (e) => {
+  if(!(e.metaKey || e.ctrlKey)) return;
+  if(e.key !== "c" && e.key !== "x") return;
+  const el = document.activeElement;
+  if(!el || (el.tagName !== "TEXTAREA" && el.tagName !== "INPUT")) return;
+  if(el.type && el.type !== "text" && el.tagName === "INPUT") return;
+
+  // Only act when nothing is selected
+  if(el.selectionStart !== el.selectionEnd) return;
+
+  const val = el.value;
+  if(!val) return;
+
+  if(el.tagName === "INPUT"){
+    // Single-line: copy/cut entire value
+    navigator.clipboard.writeText(val).catch(()=>{});
+    if(e.key === "x") el.value = "";
+    e.preventDefault();
+    if(e.key === "x") el.dispatchEvent(new Event("input", {bubbles:true}));
+    return;
+  }
+
+  // Textarea: find current line
+  const pos = el.selectionStart;
+  let lineStart = val.lastIndexOf("\n", pos - 1) + 1;
+  let lineEnd = val.indexOf("\n", pos);
+  if(lineEnd === -1) lineEnd = val.length;
+
+  const line = val.substring(lineStart, lineEnd);
+  navigator.clipboard.writeText(line).catch(()=>{});
+
+  if(e.key === "x"){
+    // Remove the line (and the trailing or leading newline)
+    let delStart = lineStart;
+    let delEnd = lineEnd;
+    if(delEnd < val.length) delEnd++; // eat trailing \n
+    else if(delStart > 0) delStart--; // eat leading \n if last line
+    el.value = val.substring(0, delStart) + val.substring(delEnd);
+    el.selectionStart = el.selectionEnd = delStart;
+    el.dispatchEvent(new Event("input", {bubbles:true}));
+  }
+  e.preventDefault();
+});
+
 /* =========================================================
    TIMER (persistent)
    ========================================================= */
