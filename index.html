@@ -3308,32 +3308,47 @@ function makePayload(){
 }
 
 
-// Undo system — snapshot-based
+// Undo/redo system — snapshot-based
 const undoStack = [];
+const redoStack = [];
 const MAX_UNDO = 30;
 let undoCapturePending = false;
 
 function captureUndo(){
-  if(isCoworkMode()) return; // cowork has its own sync
+  if(isCoworkMode()) return;
   const snapshot = JSON.stringify(state.data);
   if(undoStack.length > 0 && undoStack[undoStack.length - 1] === snapshot) return;
   undoStack.push(snapshot);
   if(undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0; // new action clears redo
 }
 
-function undo(){
-  if(undoStack.length === 0) return;
-  const snapshot = undoStack.pop();
+function restoreSnapshot(snapshot){
   state.data = fixState(JSON.parse(snapshot));
   ensureCurrentProject();
   rolloverDoneBuckets();
   enforceDependenciesAllProjects();
   try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
   if(firebaseUser && !isCoworkMode()){
-    pushPersonalToFirestore().catch(e => console.warn("Undo Firestore push:", e));
+    pushPersonalToFirestore().catch(e => console.warn("Undo/redo Firestore push:", e));
   }
   renderAll();
+}
+
+function undo(){
+  if(undoStack.length === 0) return;
+  // Save current state to redo stack before restoring
+  redoStack.push(JSON.stringify(state.data));
+  restoreSnapshot(undoStack.pop());
   setStatus("Undone");
+}
+
+function redo(){
+  if(redoStack.length === 0) return;
+  // Save current state to undo stack before restoring
+  undoStack.push(JSON.stringify(state.data));
+  restoreSnapshot(redoStack.pop());
+  setStatus("Redone");
 }
 
 function queueSave(){
@@ -6281,19 +6296,26 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Cmd/Ctrl+S: force save to cloud, Cmd/Ctrl+Z: undo
+// Cmd/Ctrl+S: force save, Cmd/Ctrl+Z: undo, Cmd/Ctrl+Shift+Z: redo
 document.addEventListener("keydown", (e) => {
   if(!(e.metaKey || e.ctrlKey)) return;
   if(e.key === "s"){
     e.preventDefault();
     forceSave();
   }
-  if(e.key === "z" && !e.shiftKey){
-    // Don't intercept if user is typing in a text field (browser handles undo there)
+  if(e.key === "z"){
+    // Don't intercept if user is typing in a text field (browser handles undo/redo there)
     const el = document.activeElement;
     if(el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT")) return;
     e.preventDefault();
-    undo();
+    if(e.shiftKey) redo(); else undo();
+  }
+  // Also support Cmd+Y for redo (Windows convention)
+  if(e.key === "y" && !e.shiftKey){
+    const el = document.activeElement;
+    if(el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT")) return;
+    e.preventDefault();
+    redo();
   }
 });
 
@@ -6314,9 +6336,11 @@ document.addEventListener("keydown", (e) => {
   if(el.tagName === "INPUT"){
     // Single-line: copy/cut entire value
     navigator.clipboard.writeText(val).catch(()=>{});
-    if(e.key === "x") el.value = "";
+    if(e.key === "x"){
+      el.select();
+      document.execCommand("delete");
+    }
     e.preventDefault();
-    if(e.key === "x") el.dispatchEvent(new Event("input", {bubbles:true}));
     return;
   }
 
@@ -6330,14 +6354,14 @@ document.addEventListener("keydown", (e) => {
   navigator.clipboard.writeText(line).catch(()=>{});
 
   if(e.key === "x"){
-    // Remove the line (and the trailing or leading newline)
+    // Select the line + newline, then delete via execCommand (preserves native undo)
     let delStart = lineStart;
     let delEnd = lineEnd;
     if(delEnd < val.length) delEnd++; // eat trailing \n
     else if(delStart > 0) delStart--; // eat leading \n if last line
-    el.value = val.substring(0, delStart) + val.substring(delEnd);
-    el.selectionStart = el.selectionEnd = delStart;
-    el.dispatchEvent(new Event("input", {bubbles:true}));
+    el.selectionStart = delStart;
+    el.selectionEnd = delEnd;
+    document.execCommand("delete");
   }
   e.preventDefault();
 });
