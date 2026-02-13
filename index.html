@@ -3308,10 +3308,46 @@ function makePayload(){
 }
 
 
+// Undo system — snapshot-based
+const undoStack = [];
+const MAX_UNDO = 30;
+let undoCapturePending = false;
+
+function captureUndo(){
+  if(isCoworkMode()) return; // cowork has its own sync
+  const snapshot = JSON.stringify(state.data);
+  if(undoStack.length > 0 && undoStack[undoStack.length - 1] === snapshot) return;
+  undoStack.push(snapshot);
+  if(undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function undo(){
+  if(undoStack.length === 0) return;
+  const snapshot = undoStack.pop();
+  state.data = fixState(JSON.parse(snapshot));
+  ensureCurrentProject();
+  rolloverDoneBuckets();
+  enforceDependenciesAllProjects();
+  try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+  if(firebaseUser && !isCoworkMode()){
+    pushPersonalToFirestore().catch(e => console.warn("Undo Firestore push:", e));
+  }
+  renderAll();
+  setStatus("Undone");
+}
+
 function queueSave(){
+  // Capture undo snapshot once per debounce batch
+  if(!undoCapturePending){
+    captureUndo();
+    undoCapturePending = true;
+  }
   setStatus("Saving…");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>saveNow({silent:true}).then(()=>setSavedStatusFromLast()).catch(()=>{}), 220);
+  saveTimer = setTimeout(()=>{
+    undoCapturePending = false;
+    saveNow({silent:true}).then(()=>setSavedStatusFromLast()).catch(()=>{});
+  }, 220);
 }
 
 async function saveNow({silent=false, force=false}={}){
@@ -6245,11 +6281,19 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Cmd/Ctrl+S: force save to cloud
+// Cmd/Ctrl+S: force save to cloud, Cmd/Ctrl+Z: undo
 document.addEventListener("keydown", (e) => {
-  if((e.metaKey || e.ctrlKey) && e.key === "s"){
+  if(!(e.metaKey || e.ctrlKey)) return;
+  if(e.key === "s"){
     e.preventDefault();
     forceSave();
+  }
+  if(e.key === "z" && !e.shiftKey){
+    // Don't intercept if user is typing in a text field (browser handles undo there)
+    const el = document.activeElement;
+    if(el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT")) return;
+    e.preventDefault();
+    undo();
   }
 });
 
