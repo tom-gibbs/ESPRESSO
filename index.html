@@ -2224,6 +2224,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 
       <div id="syncSignedIn" style="display:none">
         <div class="syncActions">
+          <button id="forceSaveBtn" class="googleBtn" type="button" style="background:var(--accent);border:none;color:#fff;font-size:13px;padding:10px 20px">Force Save</button>
           <button id="forceSyncBtn" class="googleBtn" type="button" style="background:var(--accent);border:none;color:#fff;font-size:13px;padding:10px 20px">Force Sync</button>
           <button id="signOutBtn" class="subtle" type="button">Sign Out</button>
         </div>
@@ -3327,6 +3328,11 @@ async function saveNow({silent=false, force=false}={}){
   } catch(e) {
     setStatus("SAVE FAILED (storage full?)");
     throw e;
+  }
+
+  // Push to Firestore when signed in
+  if(firebaseUser && !isCoworkMode()){
+    pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
   }
 
   lastSavedUnix = Math.floor(Date.now()/1000);
@@ -6239,6 +6245,14 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// Cmd/Ctrl+S: force save to cloud
+document.addEventListener("keydown", (e) => {
+  if((e.metaKey || e.ctrlKey) && e.key === "s"){
+    e.preventDefault();
+    forceSave();
+  }
+});
+
 // VS Code-style line copy/cut in text fields
 document.addEventListener("keydown", (e) => {
   if(!(e.metaKey || e.ctrlKey)) return;
@@ -7233,6 +7247,24 @@ $("forceSyncBtn").onclick = async () => {
   btn.disabled = false;
   btn.textContent = "Force Sync";
 };
+
+async function forceSave(){
+  if(!firebaseUser){ setSyncStatus("Not signed in", "error"); return; }
+  const btn = $("forceSaveBtn");
+  if(btn){ btn.disabled = true; btn.textContent = "Saving…"; }
+  setSyncStatus("Pushing local data to cloud…", "");
+  try {
+    await saveNow({silent:true});
+    await pushPersonalToFirestore();
+    setSyncStatus("Saved — local data pushed to cloud", "success");
+  } catch(e){
+    console.error("Force save error:", e);
+    setSyncStatus("Save failed: " + e.message, "error");
+  }
+  if(btn){ btn.disabled = false; btn.textContent = "Force Save"; }
+}
+
+$("forceSaveBtn").onclick = forceSave;
 
 // Google Drive functions (kept temporarily for one-time migration)
 async function findDriveFile(){
