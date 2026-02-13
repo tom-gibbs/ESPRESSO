@@ -2224,6 +2224,7 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
 
       <div id="syncSignedIn" style="display:none">
         <div class="syncActions">
+          <button id="forceSyncBtn" class="googleBtn" type="button" style="background:var(--accent);border:none;color:#fff;font-size:13px;padding:10px 20px">Force Sync</button>
           <button id="signOutBtn" class="subtle" type="button">Sign Out</button>
         </div>
       </div>
@@ -7144,6 +7145,48 @@ $("signOutBtn").onclick = () => {
   try { localStorage.removeItem("espresso_google_user"); } catch(e){}
   updateSyncUI();
   setSyncStatus("Signed out", "");
+};
+
+$("forceSyncBtn").onclick = async () => {
+  if(!firebaseUser){ setSyncStatus("Not signed in", "error"); return; }
+  const btn = $("forceSyncBtn");
+  btn.disabled = true;
+  btn.textContent = "Syncing…";
+  setSyncStatus("Pulling latest data from cloud…", "");
+  try {
+    const doc = await db.collection("personalData").doc(firebaseUser.uid).get();
+    if(!doc.exists){
+      setSyncStatus("No cloud data found — pushing local data", "");
+      await pushPersonalToFirestore();
+      setSyncStatus("Local data pushed to cloud", "success");
+    } else {
+      const remote = fixState(doc.data());
+      state.data = remote;
+      ensureCurrentProject();
+      rolloverDoneBuckets();
+      enforceDependenciesAllProjects();
+      try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+      const rs = doc.data().settings;
+      if(rs){
+        applyTheme(rs.theme || "light");
+        applyCompact(!!rs.compact);
+        if(rs.compactVis !== undefined) applyCompactVis(rs.compactVis);
+        if(rs.focusVis !== undefined) applyFocusVis(rs.focusVis);
+        if(rs.micVis !== undefined) applyMicVis(rs.micVis);
+        if(rs.depsAlways !== undefined){
+          try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
+          updateDepsBtnVis();
+        }
+      }
+      renderAll();
+      setSyncStatus("Synced — pulled latest from cloud", "success");
+    }
+  } catch(e){
+    console.error("Force sync error:", e);
+    setSyncStatus("Sync failed: " + e.message, "error");
+  }
+  btn.disabled = false;
+  btn.textContent = "Force Sync";
 };
 
 // Google Drive functions (kept temporarily for one-time migration)
