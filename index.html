@@ -199,6 +199,23 @@ button.accent:hover{background:rgba(215,176,122,.28)}
 button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 button.iconTopBtn{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 button.iconTopBtn svg{width:18px;height:18px;display:block}
+.streamlineBadge{position:absolute;top:-4px;right:-4px;background:var(--accent);color:#1a1a2e;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;line-height:1}
+.streamlinePopover{position:absolute;top:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+html[data-theme="light"] .streamlinePopover{box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.streamlineLabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+.streamlineChips{display:flex;gap:6px;margin-bottom:10px}
+.streamlineChip{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.streamlineChip:hover{background:rgba(215,176,122,.15);border-color:var(--accent)}
+.streamlineChip.active{background:var(--accent);color:#1a1a2e;border-color:var(--accent)}
+.streamlineCustom{display:flex;gap:6px;margin-bottom:10px}
+.streamlineInputField{flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:13px;outline:none;width:60px}
+.streamlineInputField:focus{border-color:var(--accent)}
+.streamlineOffBtn{width:100%;padding:6px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.streamlineOffBtn:hover{color:var(--text);border-color:var(--text)}
+.streamlineHint{text-align:center;padding:14px 12px;color:var(--muted);font-size:13px;cursor:pointer;border-top:1px solid var(--line);margin-top:4px}
+.streamlineHint:hover{color:var(--text);background:rgba(255,255,255,.03)}
+html[data-theme="light"] .streamlineHint:hover{background:rgba(0,0,0,.02)}
+.bottomNavBtn.streamlineActive{color:var(--accent)}
 
 /* =========================================================
    CONTENT
@@ -1956,7 +1973,23 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </button>
         <button id="coworkBtn" class="subtle iconTopBtn" type="button" title="Cowork Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
         <button id="compactToggle" class="subtle iconTopBtn" type="button" title="Toggle compact mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6H4zM14 4h6v6h-6z"/><path d="M4 4h6v6H4zM14 14h6v6h-6z"/></svg></button>
-        <button id="focusBtn" class="primary iconTopBtn" type="button" title="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></button>
+        <div style="position:relative;display:inline-flex" id="streamlineWrap">
+          <button id="focusBtn" class="subtle iconTopBtn" type="button" title="Streamline (limit visible tasks)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          <div id="streamlinePopover" class="streamlinePopover" style="display:none">
+            <div class="streamlineLabel">Show top tasks</div>
+            <div class="streamlineChips">
+              <button class="streamlineChip" data-n="5">5</button>
+              <button class="streamlineChip" data-n="10">10</button>
+              <button class="streamlineChip" data-n="15">15</button>
+              <button class="streamlineChip" data-n="20">20</button>
+            </div>
+            <div class="streamlineCustom">
+              <input id="streamlineInput" type="number" min="1" max="999" placeholder="Custom" class="streamlineInputField">
+              <button id="streamlineApply" class="streamlineChip">Go</button>
+            </div>
+            <button id="streamlineOff" class="streamlineOffBtn">Turn Off</button>
+          </div>
+        </div>
         <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       </div>
     </div>
@@ -2340,8 +2373,8 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
 
         <div class="settingsRow">
-          <span class="settingsLabel">Focus Button</span>
-          <button id="focusVisToggle" class="toggleSwitch" type="button" title="Show focus button in toolbar">
+          <span class="settingsLabel">Streamline Button</span>
+          <button id="focusVisToggle" class="toggleSwitch" type="button" title="Show streamline button in toolbar">
             <span class="toggleKnob"></span>
           </button>
         </div>
@@ -2386,9 +2419,9 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <span>Add</span>
   </button>
-  <button class="bottomNavBtn" data-action="focus" title="Focus Mode">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-    <span>Focus</span>
+  <button class="bottomNavBtn" data-action="focus" title="Streamline">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    <span>Stream</span>
   </button>
   <button class="bottomNavBtn" data-action="cowork" title="Cowork">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -2472,6 +2505,8 @@ $("compactToggle").onclick = () => {
 const COMPACT_VIS_KEY = "espresso_compact_vis_v1";
 const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
 const MIC_VIS_KEY = "espresso_mic_vis_v1";
+const STREAMLINE_KEY = "espresso_streamline_v1";
+let streamlineLimit = 0;
 
 function renderAiSetup(){
   const status = $("aiStatus");
@@ -2532,9 +2567,9 @@ $("compactVisToggle").onclick = () => {
   if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
 
-// Focus button visibility toggle
+// Streamline button visibility toggle
 function applyFocusVis(show){
-  $("focusBtn").style.display = show ? "" : "none";
+  $("streamlineWrap").style.display = show ? "" : "none";
   try{ localStorage.setItem(FOCUS_VIS_KEY, show ? "true" : "false"); }catch{}
 }
 function initFocusVis(){
@@ -2551,6 +2586,93 @@ $("focusVisToggle").onclick = () => {
   $("focusVisToggle").classList.toggle("on", next);
   if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
 };
+
+// Streamline functions
+function applyStreamline(limit){
+  streamlineLimit = limit;
+  try{ localStorage.setItem(STREAMLINE_KEY, String(limit)); }catch{}
+  updateStreamlineBtn();
+  closeStreamlinePopover();
+  renderAll();
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+}
+function initStreamline(){
+  try{
+    const saved = parseInt(localStorage.getItem(STREAMLINE_KEY), 10);
+    if(!isNaN(saved) && saved > 0){ streamlineLimit = saved; updateStreamlineBtn(); return; }
+  }catch{}
+  streamlineLimit = 0;
+  updateStreamlineBtn();
+}
+function updateStreamlineBtn(){
+  const btn = $("focusBtn");
+  if(!btn) return;
+  if(streamlineLimit > 0){
+    btn.classList.remove("subtle");
+    btn.classList.add("accent");
+    btn.title = "Streamline: top " + streamlineLimit + " tasks";
+  } else {
+    btn.classList.remove("accent");
+    btn.classList.add("subtle");
+    btn.title = "Streamline (limit visible tasks)";
+  }
+  // Badge
+  let badge = btn.querySelector(".streamlineBadge");
+  if(streamlineLimit > 0){
+    if(!badge){ badge = document.createElement("span"); badge.className = "streamlineBadge"; btn.style.position = "relative"; btn.appendChild(badge); }
+    badge.textContent = streamlineLimit;
+    badge.style.display = "";
+  } else if(badge){
+    badge.style.display = "none";
+  }
+  // Highlight active chip
+  qsa(".streamlineChip[data-n]").forEach(c => {
+    c.classList.toggle("active", parseInt(c.dataset.n,10) === streamlineLimit);
+  });
+  // Bottom nav
+  qsa(".bottomNavBtn").forEach(b => {
+    if(b.dataset.action === "focus"){
+      b.classList.toggle("streamlineActive", streamlineLimit > 0);
+      const span = b.querySelector("span");
+      if(span) span.textContent = streamlineLimit > 0 ? ("Top " + streamlineLimit) : "Stream";
+    }
+  });
+}
+function toggleStreamlinePopover(){
+  const pop = $("streamlinePopover");
+  if(pop.style.display === "none"){
+    pop.style.display = "";
+    updateStreamlineBtn();
+    $("streamlineInput").value = "";
+  } else {
+    closeStreamlinePopover();
+  }
+}
+function closeStreamlinePopover(){
+  $("streamlinePopover").style.display = "none";
+}
+// Popover chip clicks
+qsa(".streamlineChip[data-n]").forEach(c => {
+  c.onclick = () => applyStreamline(parseInt(c.dataset.n, 10));
+});
+$("streamlineApply").onclick = () => {
+  const v = parseInt($("streamlineInput").value, 10);
+  if(!isNaN(v) && v > 0) applyStreamline(v);
+};
+$("streamlineInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    const v = parseInt($("streamlineInput").value, 10);
+    if(!isNaN(v) && v > 0) applyStreamline(v);
+  }
+});
+$("streamlineOff").onclick = () => applyStreamline(0);
+// Close popover on outside click
+document.addEventListener("click", (e) => {
+  const wrap = $("streamlineWrap");
+  if(wrap && !wrap.contains(e.target)) closeStreamlinePopover();
+});
+initStreamline();
 
 // Mic button visibility toggle
 function applyMicVis(show){
@@ -5363,9 +5485,17 @@ function minsToHm(mins){
   return `${h}h ${r}m`;
 }
 function renderListFooter(){
-  let items = currentList();
-  const total = items.reduce((acc,it)=>acc + (Number(it.estimateMins)||0), 0);
-  const txt = `${items.length} task${items.length===1?"":"s"} (${minsToHm(total)})`;
+  const items = currentList();
+  const fullCount = items.length;
+  const fullTotal = items.reduce((acc,it)=>acc + (Number(it.estimateMins)||0), 0);
+  let txt;
+  if(streamlineLimit > 0 && state.view === "active" && fullCount > streamlineLimit){
+    const shown = items.slice(0, streamlineLimit);
+    const shownTotal = shown.reduce((acc,it)=>acc + (Number(it.estimateMins)||0), 0);
+    txt = `${streamlineLimit} of ${fullCount} tasks (${minsToHm(shownTotal)} of ${minsToHm(fullTotal)})`;
+  } else {
+    txt = `${fullCount} task${fullCount===1?"":"s"} (${minsToHm(fullTotal)})`;
+  }
   $("listFooter").textContent = txt;
   $("listFooter").style.display = (state.page==="list") ? "" : "none";
 }
@@ -5732,11 +5862,19 @@ function renderList(){
       renderListFooter();
       return;
     }
-    items.forEach((task,i)=>{
+    const displayItems = (streamlineLimit > 0 && state.view === "active") ? items.slice(0, streamlineLimit) : items;
+    displayItems.forEach((task,i)=>{
       const li = document.createElement("li");
       renderItem(li, task, i, {showHandle:true, showNum:true});
       ul.appendChild(li);
     });
+    if(streamlineLimit > 0 && state.view === "active" && items.length > streamlineLimit){
+      const hint = document.createElement("div");
+      hint.className = "streamlineHint";
+      hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
+      hint.onclick = () => applyStreamline(0);
+      ul.appendChild(hint);
+    }
     if(editing.id===null && (state.view==="active" || state.view==="paused")) enableDragList(ul);
     renderListFooter();
     return;
@@ -5809,11 +5947,19 @@ function renderList(){
     return;
   }
 
-  items.forEach((task,i)=>{
+  const displayItems = (streamlineLimit > 0 && state.view === "active") ? items.slice(0, streamlineLimit) : items;
+  displayItems.forEach((task,i)=>{
     const li = document.createElement("li");
     renderItem(li, task, i, {showHandle:true, showNum:true});
     ul.appendChild(li);
   });
+  if(streamlineLimit > 0 && state.view === "active" && items.length > streamlineLimit){
+    const hint = document.createElement("div");
+    hint.className = "streamlineHint";
+    hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
+    hint.onclick = () => applyStreamline(0);
+    ul.appendChild(hint);
+  }
 
   if(editing.id===null && (state.view==="active" || state.view==="paused")) enableDragList(ul);
   renderListFooter();
@@ -6971,7 +7117,10 @@ $("clearDoneBtn").onclick = ()=>{
   }
 };
 
-$("focusBtn").onclick = openFocus;
+$("focusBtn").onclick = (e) => {
+  if(e.ctrlKey || e.metaKey){ openFocus(); return; }
+  toggleStreamlinePopover();
+};
 $("focusClose").onclick = closeFocus;
 timerHeader.onclick = openFocus; // Click timer badge to open focus mode
 timerHeader.title = "Click to open focus mode";
@@ -7304,6 +7453,11 @@ $("forceSyncBtn").onclick = async () => {
           try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
           updateDepsBtnVis();
         }
+        if(rs.streamlineLimit !== undefined){
+          streamlineLimit = (typeof rs.streamlineLimit === "number" && rs.streamlineLimit > 0) ? rs.streamlineLimit : 0;
+          try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
+          updateStreamlineBtn();
+        }
       }
       renderAll();
       setSyncStatus("Synced — pulled latest from cloud", "success");
@@ -7576,7 +7730,8 @@ async function pushPersonalToFirestore(){
       compactVis: localStorage.getItem(COMPACT_VIS_KEY) !== "false",
       focusVis: localStorage.getItem(FOCUS_VIS_KEY) !== "false",
       micVis: localStorage.getItem(MIC_VIS_KEY) !== "false",
-      depsAlways: localStorage.getItem(DEPS_ALWAYS_KEY) === "true"
+      depsAlways: localStorage.getItem(DEPS_ALWAYS_KEY) === "true",
+      streamlineLimit: streamlineLimit
     }
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
@@ -7608,6 +7763,11 @@ async function pullPersonalFromFirestore(){
       if(rs.depsAlways !== undefined){
         try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
         updateDepsBtnVis();
+      }
+      if(rs.streamlineLimit !== undefined){
+        streamlineLimit = (typeof rs.streamlineLimit === "number" && rs.streamlineLimit > 0) ? rs.streamlineLimit : 0;
+        try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
+        updateStreamlineBtn();
       }
     }
     return true;
@@ -7641,6 +7801,11 @@ function startPersonalListener(){
           if(rs.micVis !== undefined) applyMicVis(rs.micVis);
           if(rs.depsAlways !== undefined){
             try{ localStorage.setItem(DEPS_ALWAYS_KEY, rs.depsAlways ? "true" : "false"); }catch{}
+          }
+          if(rs.streamlineLimit !== undefined){
+            streamlineLimit = (typeof rs.streamlineLimit === "number" && rs.streamlineLimit > 0) ? rs.streamlineLimit : 0;
+            try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
+            updateStreamlineBtn();
           }
         }
         renderAll();
@@ -8208,7 +8373,7 @@ qsa(".bottomNavBtn").forEach(btn => {
         window.scrollTo({top:0,behavior:"smooth"});
         break;
       case "focus":
-        $("focusBtn").click();
+        toggleStreamlinePopover();
         break;
       case "cowork":
         openCoworkModal();
