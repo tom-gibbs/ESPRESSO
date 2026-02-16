@@ -228,8 +228,12 @@ html[data-theme="light"] .perspectivePopover{background:#ffffff;box-shadow:0 8px
 .perspectiveTagDel:hover{color:#ef4444;background:rgba(239,68,68,.12)}
 .perspectiveAddRow{display:flex;gap:6px;margin-top:8px}
 .perspectiveActions{display:flex;gap:6px;margin-top:8px}
-.perspectiveCard{background:var(--itemBg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.perspectiveCard{display:flex;align-items:center;gap:10px;background:var(--itemBg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s}
 .perspectiveCard:hover{border-color:var(--accent);background:rgba(215,176,122,.08)}
+.perspectiveCard.dragging{opacity:.4}
+.perspectiveCard .pcHandle{cursor:grab;color:var(--muted);font-size:16px;user-select:none;flex-shrink:0}
+.perspectiveCard .pcNum{font-size:13px;font-weight:700;color:var(--muted);min-width:18px;text-align:center;flex-shrink:0}
+.perspectiveCard .pcBody{flex:1;min-width:0}
 .perspectiveCard .pcTitle{font-size:15px;font-weight:700;margin-bottom:4px}
 .perspectiveCard .pcMeta{font-size:12px;color:var(--muted)}
 .perspectiveBackHeader{display:flex;align-items:center;gap:8px;padding:10px 4px 12px;cursor:pointer;color:var(--accent);font-weight:700;font-size:14px}
@@ -6199,23 +6203,71 @@ function renderPerspectiveGroups(ul){
     ul.appendChild(empty);
     return;
   }
-  groups.forEach(g => {
+  groups.forEach((g, idx) => {
     const card = document.createElement("div");
     card.className = "perspectiveCard";
+    card.dataset.tag = g.tag;
+    const isTagged = g.tag !== "";
+    card.draggable = isTagged;
+
+    const handle = document.createElement("div");
+    handle.className = "pcHandle";
+    handle.textContent = isTagged ? "\u2261" : "";
+    handle.style.visibility = isTagged ? "" : "hidden";
+
+    const num = document.createElement("div");
+    num.className = "pcNum";
+    num.textContent = (idx + 1) + ".";
+
+    const body = document.createElement("div");
+    body.className = "pcBody";
     const title = document.createElement("div");
     title.className = "pcTitle";
     title.textContent = g.tag || "Untagged";
     const meta = document.createElement("div");
     meta.className = "pcMeta";
     meta.textContent = g.tasks.length + " task" + (g.tasks.length === 1 ? "" : "s") + (g.totalEst > 0 ? " \u00b7 " + minsToHm(g.totalEst) : "");
-    card.appendChild(title);
-    card.appendChild(meta);
+    body.appendChild(title);
+    body.appendChild(meta);
+
+    card.appendChild(handle);
+    card.appendChild(num);
+    card.appendChild(body);
     card.onclick = () => {
       perspectiveDrillTag = g.tag;
       renderAll();
     };
+    card.addEventListener("dragstart", () => card.classList.add("dragging"));
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      syncPerspectiveOrderFromDOM(ul);
+    });
     ul.appendChild(card);
   });
+
+  // Enable drag reordering on the card list
+  ul.ondragover = (e) => {
+    e.preventDefault();
+    const dragging = ul.querySelector(".perspectiveCard.dragging");
+    if(!dragging) return;
+    const cards = [...ul.querySelectorAll(".perspectiveCard:not(.dragging)")];
+    const after = cards.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height / 2;
+      if(offset < 0 && offset > closest.offset) return { offset, el };
+      return closest;
+    }, { offset: -Infinity, el: null }).el;
+    after ? ul.insertBefore(dragging, after) : ul.appendChild(dragging);
+  };
+}
+
+function syncPerspectiveOrderFromDOM(ul){
+  const cards = [...ul.querySelectorAll(".perspectiveCard")];
+  const newOrder = cards.map(c => c.dataset.tag).filter(t => t !== "");
+  // "Untagged" (tag="") stays at the end, only reorder named tags
+  state.data.perspectives = newOrder;
+  queueSave();
+  renderAll();
 }
 function renderPerspectiveDrillIn(ul){
   // Back header
