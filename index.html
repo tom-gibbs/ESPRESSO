@@ -2783,6 +2783,29 @@ function renderPerspectivePopover(){
       const name = document.createElement("span");
       name.className = "perspectiveTagName";
       name.textContent = tag;
+      name.title = "Click to rename";
+      name.style.cursor = "text";
+      name.onclick = (e) => {
+        e.stopPropagation();
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.className = "streamlineInputField";
+        inp.value = tag;
+        inp.style.cssText = "font-size:13px;font-weight:600;padding:2px 6px;width:100%";
+        const commit = () => {
+          const newName = inp.value.trim();
+          if(newName && newName !== tag) renamePerspectiveTag(tag, newName);
+          else renderPerspectivePopover();
+        };
+        inp.onkeydown = (ev) => {
+          if(ev.key === "Enter"){ ev.preventDefault(); commit(); }
+          if(ev.key === "Escape"){ ev.preventDefault(); renderPerspectivePopover(); }
+        };
+        inp.onblur = commit;
+        name.replaceWith(inp);
+        inp.focus();
+        inp.select();
+      };
       const count = document.createElement("span");
       count.className = "perspectiveTagCount";
       count.textContent = countTasksWithPerspective(tag) + " tasks";
@@ -2814,6 +2837,23 @@ function removePerspectiveTag(tag){
   // Clear from all tasks
   forAllTasks(t => { if(t.perspective === tag) t.perspective = ""; });
   if(perspectiveDrillTag === tag) perspectiveDrillTag = null;
+  queueSave();
+  renderPerspectivePopover();
+  renderAll();
+}
+function renamePerspectiveTag(oldName, newName){
+  if(!Array.isArray(state.data.perspectives)) return;
+  if(oldName === newName) return;
+  // If newName already exists, merge into it
+  const idx = state.data.perspectives.indexOf(oldName);
+  if(idx === -1) return;
+  if(state.data.perspectives.includes(newName)){
+    state.data.perspectives.splice(idx, 1);
+  } else {
+    state.data.perspectives[idx] = newName;
+  }
+  forAllTasks(t => { if(t.perspective === oldName) t.perspective = newName; });
+  if(perspectiveDrillTag === oldName) perspectiveDrillTag = newName;
   queueSave();
   renderPerspectivePopover();
   renderAll();
