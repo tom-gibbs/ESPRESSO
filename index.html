@@ -200,8 +200,8 @@ button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 button.iconTopBtn{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 button.iconTopBtn svg{width:18px;height:18px;display:block}
 .streamlineBadge{position:absolute;top:-4px;right:-4px;background:var(--accent);color:#1a1a2e;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;line-height:1}
-.streamlinePopover{position:absolute;top:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3)}
-html[data-theme="light"] .streamlinePopover{box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.streamlinePopover{position:absolute;top:calc(100% + 6px);right:0;background:#11131a;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:180px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+html[data-theme="light"] .streamlinePopover{background:#ffffff;box-shadow:0 8px 24px rgba(0,0,0,.12)}
 .streamlineLabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
 .streamlineChips{display:flex;gap:6px;margin-bottom:10px}
 .streamlineChip{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
@@ -216,6 +216,35 @@ html[data-theme="light"] .streamlinePopover{box-shadow:0 8px 24px rgba(0,0,0,.12
 .streamlineHint:hover{color:var(--text);background:rgba(255,255,255,.03)}
 html[data-theme="light"] .streamlineHint:hover{background:rgba(0,0,0,.02)}
 .bottomNavBtn.streamlineActive{color:var(--accent)}
+
+/* Perspective */
+.perspectivePopover{position:absolute;top:calc(100% + 6px);right:0;background:#11131a;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:220px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+html[data-theme="light"] .perspectivePopover{background:#ffffff;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.perspectiveTagItem{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--line)}
+.perspectiveTagItem:last-child{border-bottom:none}
+.perspectiveTagName{flex:1;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.perspectiveTagCount{font-size:11px;color:var(--muted);white-space:nowrap}
+.perspectiveTagDel{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;border-radius:4px}
+.perspectiveTagDel:hover{color:#ef4444;background:rgba(239,68,68,.12)}
+.perspectiveAddRow{display:flex;gap:6px;margin-top:8px}
+.perspectiveActions{display:flex;gap:6px;margin-top:8px}
+.perspectiveCard{background:var(--itemBg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.perspectiveCard:hover{border-color:var(--accent);background:rgba(215,176,122,.08)}
+.perspectiveCard .pcTitle{font-size:15px;font-weight:700;margin-bottom:4px}
+.perspectiveCard .pcMeta{font-size:12px;color:var(--muted)}
+.perspectiveBackHeader{display:flex;align-items:center;gap:8px;padding:10px 4px 12px;cursor:pointer;color:var(--accent);font-weight:700;font-size:14px}
+.perspectiveBackHeader:hover{opacity:.8}
+.perspectiveBackHeader svg{width:16px;height:16px}
+.perspectiveBadge{display:inline-flex;align-items:center;gap:3px;background:rgba(168,130,255,.15);color:rgb(168,130,255);font-size:10px;font-weight:700;padding:1px 7px;border-radius:6px;margin-left:6px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+html[data-theme="light"] .perspectiveBadge{background:rgba(128,90,213,.12);color:rgb(108,70,193)}
+.tagPicker{position:fixed;background:#11131a;border:1px solid var(--line);border-radius:10px;padding:8px;min-width:160px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+html[data-theme="light"] .tagPicker{background:#ffffff;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.tagPickerItem{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:background .1s}
+.tagPickerItem:hover{background:rgba(215,176,122,.12)}
+.tagPickerItem .tpCheck{width:16px;text-align:center;font-size:12px;color:var(--accent)}
+.tagPickerNone{padding:6px 8px;font-size:12px;color:var(--muted);cursor:pointer;border-radius:6px}
+.tagPickerNone:hover{background:rgba(255,255,255,.05)}
+html[data-theme="light"] .tagPickerNone:hover{background:rgba(0,0,0,.04)}
 
 /* =========================================================
    CONTENT
@@ -1990,6 +2019,21 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
             <button id="streamlineOff" class="streamlineOffBtn">Turn Off</button>
           </div>
         </div>
+        <div style="position:relative;display:inline-flex" id="perspectiveWrap">
+          <button id="perspectiveBtn" class="subtle iconTopBtn" type="button" title="Perspective (daily goal tags)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></button>
+          <div id="perspectivePopover" class="perspectivePopover" style="display:none">
+            <div class="streamlineLabel">Perspectives</div>
+            <div id="perspectiveTagList"></div>
+            <div class="perspectiveAddRow">
+              <input id="perspectiveInput" type="text" placeholder="New perspective…" class="streamlineInputField" style="flex:1">
+              <button id="perspectiveAddBtn" class="streamlineChip">Add</button>
+            </div>
+            <div class="perspectiveActions">
+              <button id="perspectiveToggleBtn" class="streamlineChip" style="flex:1"></button>
+              <button id="perspectiveClearBtn" class="streamlineOffBtn" style="flex:1">Clear All Tags</button>
+            </div>
+          </div>
+        </div>
         <button id="settingsBtn" class="subtle iconTopBtn" type="button" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       </div>
     </div>
@@ -2674,6 +2718,245 @@ document.addEventListener("click", (e) => {
 });
 initStreamline();
 
+// Perspective functions
+const PERSPECTIVE_KEY = "espresso_perspective_v1";
+let perspectiveMode = false;
+let perspectiveDrillTag = null;
+let activeTagPicker = null;
+
+function initPerspective(){
+  try{
+    perspectiveMode = localStorage.getItem(PERSPECTIVE_KEY) === "1";
+  }catch{}
+  perspectiveDrillTag = null;
+  updatePerspectiveBtn();
+}
+function togglePerspectiveMode(){
+  perspectiveMode = !perspectiveMode;
+  perspectiveDrillTag = null;
+  try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
+  updatePerspectiveBtn();
+  renderAll();
+  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+}
+function updatePerspectiveBtn(){
+  const btn = $("perspectiveBtn");
+  if(!btn) return;
+  if(perspectiveMode){
+    btn.classList.remove("subtle");
+    btn.classList.add("accent");
+    btn.title = "Perspective mode ON";
+  } else {
+    btn.classList.remove("accent");
+    btn.classList.add("subtle");
+    btn.title = "Perspective (daily goal tags)";
+  }
+  const toggle = $("perspectiveToggleBtn");
+  if(toggle) toggle.textContent = perspectiveMode ? "Deactivate" : "Activate";
+}
+function togglePerspectivePopover(){
+  const pop = $("perspectivePopover");
+  if(pop.style.display === "none"){
+    pop.style.display = "";
+    renderPerspectivePopover();
+  } else {
+    closePerspectivePopover();
+  }
+}
+function closePerspectivePopover(){
+  $("perspectivePopover").style.display = "none";
+}
+function renderPerspectivePopover(){
+  const list = $("perspectiveTagList");
+  if(!list) return;
+  list.innerHTML = "";
+  const tags = state.data.perspectives || [];
+  if(tags.length === 0){
+    const empty = document.createElement("div");
+    empty.style.cssText = "font-size:12px;color:var(--muted);padding:6px 4px";
+    empty.textContent = "No perspectives defined yet";
+    list.appendChild(empty);
+  } else {
+    tags.forEach(tag => {
+      const row = document.createElement("div");
+      row.className = "perspectiveTagItem";
+      const name = document.createElement("span");
+      name.className = "perspectiveTagName";
+      name.textContent = tag;
+      const count = document.createElement("span");
+      count.className = "perspectiveTagCount";
+      count.textContent = countTasksWithPerspective(tag) + " tasks";
+      const del = document.createElement("button");
+      del.className = "perspectiveTagDel";
+      del.textContent = "\u00d7";
+      del.title = "Delete perspective";
+      del.onclick = (e) => { e.stopPropagation(); removePerspectiveTag(tag); };
+      row.appendChild(name);
+      row.appendChild(count);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  updatePerspectiveBtn();
+}
+function addPerspectiveTag(name){
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  if(!Array.isArray(state.data.perspectives)) state.data.perspectives = [];
+  if(state.data.perspectives.includes(trimmed)) return;
+  state.data.perspectives.push(trimmed);
+  queueSave();
+  renderPerspectivePopover();
+}
+function removePerspectiveTag(tag){
+  if(!Array.isArray(state.data.perspectives)) return;
+  state.data.perspectives = state.data.perspectives.filter(t => t !== tag);
+  // Clear from all tasks
+  forAllTasks(t => { if(t.perspective === tag) t.perspective = ""; });
+  if(perspectiveDrillTag === tag) perspectiveDrillTag = null;
+  queueSave();
+  renderPerspectivePopover();
+  renderAll();
+}
+function clearAllPerspectiveTags(){
+  forAllTasks(t => { t.perspective = ""; });
+  perspectiveDrillTag = null;
+  queueSave();
+  renderPerspectivePopover();
+  renderAll();
+}
+function forAllTasks(fn){
+  const d = isCoworkMode() ? coworkState.data : state.data;
+  for(const pid of (d.projectOrder || [])){
+    const p = d.projects[pid];
+    if(!p) continue;
+    (p.active||[]).forEach(fn);
+    (p.paused||[]).forEach(fn);
+    (p.done_today||[]).forEach(fn);
+    (p.done_week||[]).forEach(fn);
+    (p.done_history||[]).forEach(fn);
+  }
+}
+function countTasksWithPerspective(tag){
+  let count = 0;
+  const d = isCoworkMode() ? coworkState.data : state.data;
+  for(const pid of (d.projectOrder || [])){
+    const p = d.projects[pid];
+    if(!p) continue;
+    count += (p.active||[]).filter(t => t.perspective === tag).length;
+    count += (p.paused||[]).filter(t => t.perspective === tag).length;
+  }
+  return count;
+}
+function perspectiveGroupsForCurrentView(){
+  const items = currentList();
+  const tags = state.data.perspectives || [];
+  const groups = [];
+  for(const tag of tags){
+    const matching = items.filter(t => t.perspective === tag);
+    if(matching.length > 0){
+      const totalEst = matching.reduce((s,t) => s + (Number(t.estimateMins)||0), 0);
+      groups.push({ tag, tasks: matching, totalEst });
+    }
+  }
+  const untagged = items.filter(t => !t.perspective);
+  if(untagged.length > 0){
+    const totalEst = untagged.reduce((s,t) => s + (Number(t.estimateMins)||0), 0);
+    groups.push({ tag: "", tasks: untagged, totalEst });
+  }
+  return groups;
+}
+
+// Tag picker popup (for assigning perspectives to tasks)
+function openTagPicker(anchorEl, task){
+  closeTagPicker();
+  const tags = state.data.perspectives || [];
+  if(tags.length === 0){
+    togglePerspectivePopover();
+    return;
+  }
+  const picker = document.createElement("div");
+  picker.className = "tagPicker";
+  tags.forEach(tag => {
+    const row = document.createElement("div");
+    row.className = "tagPickerItem";
+    const check = document.createElement("span");
+    check.className = "tpCheck";
+    check.textContent = task.perspective === tag ? "\u2713" : "";
+    const label = document.createElement("span");
+    label.textContent = tag;
+    row.appendChild(check);
+    row.appendChild(label);
+    row.onclick = (e) => {
+      e.stopPropagation();
+      task.perspective = task.perspective === tag ? "" : tag;
+      if(isCoworkMode()) queueCoworkSave(); else queueSave();
+      closeTagPicker();
+      renderAll();
+    };
+    picker.appendChild(row);
+  });
+  // "None" option
+  const noneRow = document.createElement("div");
+  noneRow.className = "tagPickerNone";
+  noneRow.textContent = "Clear tag";
+  noneRow.onclick = (e) => {
+    e.stopPropagation();
+    task.perspective = "";
+    if(isCoworkMode()) queueCoworkSave(); else queueSave();
+    closeTagPicker();
+    renderAll();
+  };
+  picker.appendChild(noneRow);
+  // Position
+  const rect = anchorEl.getBoundingClientRect();
+  picker.style.top = (rect.bottom + 4) + "px";
+  picker.style.left = Math.min(rect.left, window.innerWidth - 180) + "px";
+  document.body.appendChild(picker);
+  activeTagPicker = picker;
+  setTimeout(() => {
+    const closeHandler = (ev) => {
+      if(!picker.contains(ev.target)){
+        closeTagPicker();
+        document.removeEventListener("click", closeHandler);
+      }
+    };
+    document.addEventListener("click", closeHandler);
+  }, 0);
+}
+function closeTagPicker(){
+  if(activeTagPicker){ activeTagPicker.remove(); activeTagPicker = null; }
+}
+
+// Perspective popover event wiring
+$("perspectiveBtn").onclick = () => togglePerspectivePopover();
+$("perspectiveAddBtn").onclick = () => {
+  const inp = $("perspectiveInput");
+  addPerspectiveTag(inp.value);
+  inp.value = "";
+  inp.focus();
+};
+$("perspectiveInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    e.preventDefault();
+    addPerspectiveTag(e.target.value);
+    e.target.value = "";
+  }
+});
+$("perspectiveToggleBtn").onclick = () => {
+  togglePerspectiveMode();
+  closePerspectivePopover();
+};
+$("perspectiveClearBtn").onclick = () => {
+  if(confirm("Clear all perspective tags from all tasks?")) clearAllPerspectiveTags();
+};
+// Close on outside click
+document.addEventListener("click", (e) => {
+  const wrap = $("perspectiveWrap");
+  if(wrap && !wrap.contains(e.target)) closePerspectivePopover();
+});
+initPerspective();
+
 // Mic button visibility toggle
 function applyMicVis(show){
   const btn = $("voiceInputBtn");
@@ -2774,7 +3057,8 @@ const ICONS = {
   chevron:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`,
   subtask:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12h6"/><path d="M16 6h6"/><path d="M3 6h2v12h4"/><path d="M9 18h10"/></svg>`,
   sparkles:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>`,
-  clipboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`
+  clipboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>`,
+  tag:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`
 };
 
 /* Color palette for task tagging */
@@ -2871,7 +3155,8 @@ function normalizeTask(t, projectId){
     color: (t?.color && TASK_COLORS.includes(t.color)) ? t.color : null,
     parentId: String(t?.parentId ?? ""),
     collapsed: Boolean(t?.collapsed),
-    createdBy: t?.createdBy || null
+    createdBy: t?.createdBy || null,
+    perspective: String(t?.perspective ?? "")
   };
 }
 function taskKey(task){ return `${task.projectId}:${task.id}`; }
@@ -3368,6 +3653,8 @@ for (const [pid, proj] of Object.entries(payload.projects)) {
     if(!Array.isArray(payload.globalOrder[key])) payload.globalOrder[key] = [];
   }
 
+  if(!Array.isArray(payload.perspectives)) payload.perspectives = [];
+
   return payload;
 }
 
@@ -3424,7 +3711,8 @@ function makePayload(){
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
     projects_order: state.data.projectOrder,
-    globalOrder: state.data.globalOrder
+    globalOrder: state.data.globalOrder,
+    perspectives: state.data.perspectives || []
   };
   return JSON.stringify(out);
 }
@@ -5672,6 +5960,14 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     textRow.appendChild(tag);
   }
 
+  // Perspective badge
+  if(task.perspective){
+    const pb = document.createElement("span");
+    pb.className = "perspectiveBadge";
+    pb.textContent = task.perspective;
+    textRow.appendChild(pb);
+  }
+
   // Creator badge (cowork mode)
   if(isCoworkMode() && task.createdBy){
     const cb = document.createElement("span");
@@ -5772,12 +6068,20 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     iconRow.appendChild(makeIconBtn("done", ()=>markDone(task), {title:"Done"}));
     iconRow.appendChild(makeIconBtn("pause", ()=>pauseWithReason(task), {title:"Pause"}));
     iconRow.appendChild(makeIconBtn("link", ()=>openLinkModalForTask(task), {title:"Link / Move"}));
+    if(!isCoworkMode()){
+      const tagBtn = makeIconBtn("tag", (e)=>{ e.stopPropagation(); openTagPicker(e.currentTarget, task); }, {title:"Set perspective tag"});
+      iconRow.appendChild(tagBtn);
+    }
     iconRow.appendChild(makeIconBtn("trash", ()=>{ if(confirm("Delete this task?")) deleteTask(task); }, {danger:true, title:"Delete"}));
   }else if(state.view==="paused"){
     iconRow.appendChild(makeIconBtn("done", ()=>markDone(task), {title:"Done"}));
     const blocked = (task.dependsOn && task.dependsOn.length>0 && isBlocked(task));
     if(!blocked) iconRow.appendChild(makeIconBtn("play", ()=>resumeTask(task), {title:"Resume"}));
     iconRow.appendChild(makeIconBtn("link", ()=>openLinkModalForTask(task), {title:"Link / Move"}));
+    if(!isCoworkMode()){
+      const tagBtn = makeIconBtn("tag", (e)=>{ e.stopPropagation(); openTagPicker(e.currentTarget, task); }, {title:"Set perspective tag"});
+      iconRow.appendChild(tagBtn);
+    }
     iconRow.appendChild(makeIconBtn("trash", ()=>{ if(confirm("Delete this task?")) deleteTask(task); }, {danger:true, title:"Delete"}));
   }else if(state.view==="done"){
     iconRow.appendChild(makeIconBtn("undo", ()=>restoreFromDone(task), {title:"Restore"}));
@@ -5829,6 +6133,60 @@ function pausedGroupedList(proj){
 }
 
 /* =========================================================
+   PERSPECTIVE RENDERING
+   ========================================================= */
+function renderPerspectiveGroups(ul){
+  const groups = perspectiveGroupsForCurrentView();
+  if(groups.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "emptyState";
+    empty.innerHTML = '<div class="emptyIcon">&#x1f3af;</div><div class="emptyText">No active tasks</div><div class="emptyHint">Add tasks and tag them with perspectives</div>';
+    ul.appendChild(empty);
+    return;
+  }
+  groups.forEach(g => {
+    const card = document.createElement("div");
+    card.className = "perspectiveCard";
+    const title = document.createElement("div");
+    title.className = "pcTitle";
+    title.textContent = g.tag || "Untagged";
+    const meta = document.createElement("div");
+    meta.className = "pcMeta";
+    meta.textContent = g.tasks.length + " task" + (g.tasks.length === 1 ? "" : "s") + (g.totalEst > 0 ? " \u00b7 " + minsToHm(g.totalEst) : "");
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.onclick = () => {
+      perspectiveDrillTag = g.tag;
+      renderAll();
+    };
+    ul.appendChild(card);
+  });
+}
+function renderPerspectiveDrillIn(ul){
+  // Back header
+  const back = document.createElement("div");
+  back.className = "perspectiveBackHeader";
+  back.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>' + escapeHtml(perspectiveDrillTag || "Untagged");
+  back.onclick = () => { perspectiveDrillTag = null; renderAll(); };
+  ul.appendChild(back);
+
+  const items = currentList().filter(t => (t.perspective || "") === (perspectiveDrillTag || ""));
+  if(items.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "emptyState";
+    empty.innerHTML = '<div class="emptyIcon">&#x2713;</div><div class="emptyText">No tasks here</div><div class="emptyHint">All tasks in this group are done</div>';
+    ul.appendChild(empty);
+    return;
+  }
+  items.forEach((task, i) => {
+    const li = document.createElement("li");
+    renderItem(li, task, i, {showHandle: true, showNum: true});
+    ul.appendChild(li);
+  });
+  if(editing.id === null) enableDragList(ul);
+}
+
+/* =========================================================
    RENDER LIST
    ========================================================= */
 function renderList(){
@@ -5840,6 +6198,17 @@ function renderList(){
 
   const showDoneUI = (state.page==="list" && state.view==="done");
   $("listTopRow").style.display = showDoneUI ? "" : "none";
+
+  // Perspective mode: show group cards or drill-in
+  if(perspectiveMode && state.view === "active" && !isCoworkMode()){
+    if(perspectiveDrillTag !== null){
+      renderPerspectiveDrillIn(ul);
+    } else {
+      renderPerspectiveGroups(ul);
+    }
+    renderListFooter();
+    return;
+  }
 
   if(state.projectId === ALL_ID){
     const items = currentList();
@@ -6370,6 +6739,9 @@ function renderFocus(){
       }
     }, {title: "Break down with AI"}));
   }
+  if(!isCoworkMode()){
+    row.appendChild(makeIconBtn("tag", (e)=>{ e.stopPropagation(); openTagPicker(e.currentTarget, top); }, {title:"Set perspective tag"}));
+  }
   row.appendChild(makeIconBtn("trash", ()=>{ if(confirm("Delete this task?")){ deleteTask(top); focusedTaskKey = null; } }, {danger:true, title:"Delete"}));
 }
 
@@ -6433,6 +6805,9 @@ focusOverlay.addEventListener("click",(e)=>{ if(e.target===focusOverlay) closeFo
 // Global Escape key to close modals
 document.addEventListener("keydown", (e) => {
   if(e.key === "Escape"){
+    if(activeTagPicker){ closeTagPicker(); return; }
+    if($("perspectivePopover").style.display !== "none"){ closePerspectivePopover(); return; }
+    if(perspectiveDrillTag !== null){ perspectiveDrillTag = null; renderAll(); return; }
     if($("settingsOverlay").classList.contains("on")){ closeSettings(); return; }
     if($("aiOverlay").classList.contains("on")){ closeAiModal(); return; }
     if(focusOverlay.classList.contains("on")){ closeFocus(); return; }
@@ -6926,6 +7301,7 @@ function renderAllCowork(){
   updateCoworkTabCounts();
 
   // Hide personal-mode UI
+  $("perspectiveWrap").style.display = "none";
   $("sectionHeaderWrap").style.display = "none";
   $("inlineProjectSelect").style.display = "none";
   $("summaryPage").style.display = "none";
@@ -6983,6 +7359,7 @@ function renderAll(){
     return;
   }
   ensureCurrentProject();
+  $("perspectiveWrap").style.display = "";
   updateSectionHeader();
   renderProjectMenu();
   updateTabCounts();
@@ -7723,6 +8100,7 @@ async function pushPersonalToFirestore(){
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
     globalOrder: state.data.globalOrder || {},
+    perspectives: state.data.perspectives || [],
     currentProject: state.data.currentProject || state.data.projectOrder?.[0] || "default",
     settings: {
       theme: localStorage.getItem(THEME_KEY) || "light",
@@ -7731,7 +8109,8 @@ async function pushPersonalToFirestore(){
       focusVis: localStorage.getItem(FOCUS_VIS_KEY) !== "false",
       micVis: localStorage.getItem(MIC_VIS_KEY) !== "false",
       depsAlways: localStorage.getItem(DEPS_ALWAYS_KEY) === "true",
-      streamlineLimit: streamlineLimit
+      streamlineLimit: streamlineLimit,
+      perspectiveMode: perspectiveMode
     }
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
@@ -7768,6 +8147,11 @@ async function pullPersonalFromFirestore(){
         streamlineLimit = (typeof rs.streamlineLimit === "number" && rs.streamlineLimit > 0) ? rs.streamlineLimit : 0;
         try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
         updateStreamlineBtn();
+      }
+      if(rs.perspectiveMode !== undefined){
+        perspectiveMode = !!rs.perspectiveMode;
+        try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
+        updatePerspectiveBtn();
       }
     }
     return true;
@@ -7806,6 +8190,11 @@ function startPersonalListener(){
             streamlineLimit = (typeof rs.streamlineLimit === "number" && rs.streamlineLimit > 0) ? rs.streamlineLimit : 0;
             try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
             updateStreamlineBtn();
+          }
+          if(rs.perspectiveMode !== undefined){
+            perspectiveMode = !!rs.perspectiveMode;
+            try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
+            updatePerspectiveBtn();
           }
         }
         renderAll();
