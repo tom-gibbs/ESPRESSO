@@ -2850,9 +2850,13 @@ function countTasksWithPerspective(tag){
 }
 function perspectiveGroupsForCurrentView(){
   const items = currentList();
-  const tags = state.data.perspectives || [];
+  const knownTags = new Set(state.data.perspectives || []);
+  // Also collect any orphaned tags that tasks have but aren't in the perspectives list
+  for(const t of items){
+    if(t.perspective) knownTags.add(t.perspective);
+  }
   const groups = [];
-  for(const tag of tags){
+  for(const tag of knownTags){
     const matching = items.filter(t => t.perspective === tag);
     if(matching.length > 0){
       const totalEst = matching.reduce((s,t) => s + (Number(t.estimateMins)||0), 0);
