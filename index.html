@@ -2307,6 +2307,17 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
       </div>
 
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+        <div class="streamlineLabel">Backup</div>
+        <div id="backupInfo" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
+        <div class="syncActions">
+          <button id="exportDataBtn" class="subtle" type="button" style="font-size:13px;padding:8px 16px">Export Data</button>
+          <button id="importDataBtn" class="subtle" type="button" style="font-size:13px;padding:8px 16px">Import Data</button>
+          <button id="restoreBackupBtn" class="subtle" type="button" style="font-size:13px;padding:8px 16px">Restore Last Auto-Backup</button>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="display:none">
+      </div>
+
       <div class="syncActions" style="margin-top:20px">
         <button id="closeSyncBtn" class="subtle" type="button">Close</button>
       </div>
@@ -7626,6 +7637,7 @@ function openSyncModal(){
   syncOverlay.classList.add("on");
   document.body.style.overflow = "hidden";
   updateSyncUI();
+  updateBackupInfo();
 }
 function closeSyncModal(){
   syncOverlay.classList.remove("on");
@@ -7909,6 +7921,116 @@ async function forceSave(){
 
 $("forceSaveBtn").onclick = forceSave;
 
+// Backup / Export / Import
+const BACKUP_KEY = "espresso_autobackup_v1";
+const BACKUP_TS_KEY = "espresso_autobackup_ts_v1";
+
+function autoBackupState(){
+  try{
+    const snapshot = JSON.stringify(state.data);
+    localStorage.setItem(BACKUP_KEY, snapshot);
+    localStorage.setItem(BACKUP_TS_KEY, String(Date.now()));
+  }catch(e){ console.warn("Auto-backup failed:", e); }
+}
+
+function getBackupInfo(){
+  try{
+    const ts = parseInt(localStorage.getItem(BACKUP_TS_KEY), 10);
+    if(!ts || isNaN(ts)) return null;
+    const data = localStorage.getItem(BACKUP_KEY);
+    if(!data) return null;
+    return { ts, data };
+  }catch{ return null; }
+}
+
+function updateBackupInfo(){
+  const el = $("backupInfo");
+  if(!el) return;
+  const info = getBackupInfo();
+  if(info){
+    const d = new Date(info.ts);
+    el.textContent = "Last auto-backup: " + d.toLocaleDateString() + " " + d.toLocaleTimeString();
+  } else {
+    el.textContent = "No auto-backup yet";
+  }
+}
+
+function exportData(){
+  const payload = makePayload();
+  payload._exportedAt = new Date().toISOString();
+  payload._settings = {
+    theme: localStorage.getItem(THEME_KEY) || "light",
+    compact: localStorage.getItem(COMPACT_KEY) === "true",
+    streamlineLimit: streamlineLimit,
+    perspectiveMode: perspectiveMode
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "espresso-backup-" + new Date().toISOString().slice(0,10) + ".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!imported.projects || !imported.projectOrder){
+        alert("Invalid backup file — missing projects or projectOrder.");
+        return;
+      }
+      if(!confirm("This will replace ALL your current data with the imported backup. Continue?")) return;
+      autoBackupState();
+      const fixed = fixState(imported);
+      state.data = fixed;
+      ensureCurrentProject();
+      rolloverDoneBuckets();
+      enforceDependenciesAllProjects();
+      try{ localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); }catch{}
+      renderAll();
+      if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+      setSyncStatus("Data imported successfully", "success");
+    }catch(err){
+      alert("Failed to import: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function restoreAutoBackup(){
+  const info = getBackupInfo();
+  if(!info){ alert("No auto-backup found."); return; }
+  const d = new Date(info.ts);
+  if(!confirm("Restore auto-backup from " + d.toLocaleDateString() + " " + d.toLocaleTimeString() + "?\n\nThis will replace your current data.")) return;
+  try{
+    autoBackupState();
+    const restored = fixState(JSON.parse(info.data));
+    state.data = restored;
+    ensureCurrentProject();
+    rolloverDoneBuckets();
+    enforceDependenciesAllProjects();
+    try{ localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); }catch{}
+    renderAll();
+    if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+    setSyncStatus("Auto-backup restored", "success");
+  }catch(err){
+    alert("Restore failed: " + err.message);
+  }
+}
+
+$("exportDataBtn").onclick = exportData;
+$("importDataBtn").onclick = () => $("importFileInput").click();
+$("importFileInput").onchange = (e) => {
+  if(e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = "";
+};
+$("restoreBackupBtn").onclick = restoreAutoBackup;
+
 // Google Drive functions (kept temporarily for one-time migration)
 async function findDriveFile(){
   try {
@@ -8168,6 +8290,8 @@ async function pullPersonalFromFirestore(){
     const remote = fixState(doc.data());
     const localRev = state.data.meta?.rev || 0;
     if(remote.meta.rev >= localRev){
+      // Auto-backup current state before overwriting
+      autoBackupState();
       state.data = remote;
       ensureCurrentProject();
       rolloverDoneBuckets();
@@ -8214,6 +8338,7 @@ function startPersonalListener(){
       if(!doc.exists || isCoworkMode()) return;
       const remote = fixState(doc.data());
       if(remote.meta.rev > (state.data.meta?.rev || 0)){
+        autoBackupState();
         state.data = remote;
         ensureCurrentProject();
         rolloverDoneBuckets();
