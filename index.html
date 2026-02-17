@@ -382,6 +382,19 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
 
 /* Input */
 .addRow{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.newTaskWrap{position:relative;flex:1;display:flex;align-items:center}
+.newTaskWrap input{flex:1;width:100%}
+.newTaskTagChip{display:inline-flex;align-items:center;gap:3px;background:rgba(168,130,255,.15);color:rgb(168,130,255);font-size:11px;font-weight:700;padding:3px 6px 3px 8px;border-radius:6px;white-space:nowrap;margin-right:6px;flex-shrink:0;max-width:140px;overflow:hidden}
+html[data-theme="light"] .newTaskTagChip{background:rgba(128,90,213,.12);color:rgb(108,70,193)}
+.newTaskTagX{cursor:pointer;font-size:14px;line-height:1;padding:0 2px;opacity:.7}
+.newTaskTagX:hover{opacity:1}
+.tagDropdown{position:absolute;bottom:calc(100% + 4px);left:0;right:0;background:#11131a;border:1px solid var(--line);border-radius:10px;padding:4px;z-index:200;box-shadow:0 -4px 16px rgba(0,0,0,.3);max-height:200px;overflow-y:auto}
+html[data-theme="light"] .tagDropdown{background:#ffffff;box-shadow:0 -4px 16px rgba(0,0,0,.1)}
+.tagDropdownItem{padding:8px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tagDropdownItem:hover,.tagDropdownItem.active{background:rgba(168,130,255,.15)}
+.tagDropdownItem .tdDot{width:8px;height:8px;border-radius:50%;background:rgb(168,130,255);flex-shrink:0}
+html[data-theme="light"] .tagDropdownItem .tdDot{background:rgb(108,70,193)}
+.tagDropdownHint{padding:6px 10px;font-size:11px;color:var(--muted)}
 .inlineProjectSelect{
   padding:10px 24px 10px 12px;
   border-radius:999px;
@@ -2065,7 +2078,11 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
 
         <div class="addRow">
-          <input id="newText" type="text" placeholder="Add a task…" />
+          <div class="newTaskWrap" id="newTaskWrap">
+            <input id="newText" type="text" placeholder="Add a task…" autocomplete="off" />
+            <span id="newTaskTagChip" class="newTaskTagChip" style="display:none"><span id="newTaskTagName"></span><span class="newTaskTagX" id="newTaskTagX">&times;</span></span>
+            <div id="tagDropdown" class="tagDropdown" style="display:none"></div>
+          </div>
           <button id="voiceInputBtn" class="voiceBtn" type="button" title="Voice input">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
@@ -5578,6 +5595,7 @@ function addItem(text){
     const createdBy = googleUser ? { name: googleUser.name, email: googleUser.email, picture: googleUser.picture, sub: googleUser.sub } : null;
     const pid = coworkState.projectId || p.id;
     const newTask = normalizeTask({ id: newId, projectId: pid, text: t, createdAt: Date.now(), createdBy }, pid);
+    if(newTaskPendingTag) newTask.perspective = newTaskPendingTag;
     if(rank !== null && rank >= 1){
       p.active.splice(Math.min(rank - 1, p.active.length), 0, newTask);
     } else {
@@ -5625,6 +5643,7 @@ function addItem(text){
     dependsOn: [],
     notes: ""
   }, proj.id);
+  if(newTaskPendingTag) newTask.perspective = newTaskPendingTag;
 
   // Insert at specified rank or append to end
   if(rank !== null && rank >= 1){
@@ -7513,12 +7532,147 @@ function renderAll(){
 qsa(".summaryTab").forEach(b=>b.onclick=()=>setView(b.dataset.view));
 qsa(".doneBtn").forEach(b=>b.onclick=()=>setDoneFilter(b.dataset.done));
 
+// Tag dropdown for new task input
+let newTaskPendingTag = "";
+let tagDropdownIdx = -1;
+let tagDropdownSlashPos = -1;
+
+function showTagDropdown(filter){
+  const dd = $("tagDropdown");
+  const tags = (state.data.perspectives || []).filter(t =>
+    !filter || t.toLowerCase().includes(filter.toLowerCase())
+  );
+  dd.innerHTML = "";
+  if(tags.length === 0){
+    dd.style.display = "none";
+    return;
+  }
+  tags.forEach((tag, i) => {
+    const row = document.createElement("div");
+    row.className = "tagDropdownItem" + (i === tagDropdownIdx ? " active" : "");
+    row.innerHTML = '<span class="tdDot"></span>';
+    row.appendChild(document.createTextNode(tag));
+    row.onmousedown = (e) => {
+      e.preventDefault();
+      selectTagFromDropdown(tag);
+    };
+    dd.appendChild(row);
+  });
+  const hint = document.createElement("div");
+  hint.className = "tagDropdownHint";
+  hint.textContent = "↑↓ to navigate, Enter to select, Esc to dismiss";
+  dd.appendChild(hint);
+  dd.style.display = "";
+}
+
+function hideTagDropdown(){
+  $("tagDropdown").style.display = "none";
+  tagDropdownIdx = -1;
+  tagDropdownSlashPos = -1;
+}
+
+function selectTagFromDropdown(tag){
+  newTaskPendingTag = tag;
+  // Remove the /query text from the input
+  const inp = $("newText");
+  if(tagDropdownSlashPos >= 0){
+    inp.value = inp.value.substring(0, tagDropdownSlashPos).trimEnd();
+  }
+  updateNewTaskTagChip();
+  hideTagDropdown();
+  inp.focus();
+}
+
+function updateNewTaskTagChip(){
+  const chip = $("newTaskTagChip");
+  const name = $("newTaskTagName");
+  if(newTaskPendingTag){
+    name.textContent = newTaskPendingTag;
+    chip.style.display = "";
+  } else {
+    chip.style.display = "none";
+  }
+}
+
+function clearNewTaskTag(){
+  newTaskPendingTag = "";
+  updateNewTaskTagChip();
+}
+
+$("newTaskTagX").onclick = () => {
+  clearNewTaskTag();
+  $("newText").focus();
+};
+
 $("newText").addEventListener("keydown",(e)=>{
+  const dd = $("tagDropdown");
+  const isOpen = dd.style.display !== "none";
+
+  if(isOpen){
+    const items = dd.querySelectorAll(".tagDropdownItem");
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      tagDropdownIdx = Math.min(tagDropdownIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("active", i === tagDropdownIdx));
+      return;
+    }
+    if(e.key === "ArrowUp"){
+      e.preventDefault();
+      tagDropdownIdx = Math.max(tagDropdownIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("active", i === tagDropdownIdx));
+      return;
+    }
+    if(e.key === "Enter"){
+      e.preventDefault();
+      if(tagDropdownIdx >= 0 && tagDropdownIdx < items.length){
+        const tags = (state.data.perspectives || []).filter(t => {
+          const filter = $("newText").value.substring(tagDropdownSlashPos + 1);
+          return !filter || t.toLowerCase().includes(filter.toLowerCase());
+        });
+        if(tags[tagDropdownIdx]) selectTagFromDropdown(tags[tagDropdownIdx]);
+      } else {
+        hideTagDropdown();
+      }
+      return;
+    }
+    if(e.key === "Escape"){
+      e.preventDefault();
+      hideTagDropdown();
+      return;
+    }
+  }
+
   if(e.key==="Enter"){
     e.preventDefault();
     addItem($("newText").value);
     $("newText").value="";
+    clearNewTaskTag();
   }
+});
+
+$("newText").addEventListener("input", () => {
+  const inp = $("newText");
+  const val = inp.value;
+  const cursorPos = inp.selectionStart;
+
+  // Find the last `/` before the cursor
+  const beforeCursor = val.substring(0, cursorPos);
+  const slashIdx = beforeCursor.lastIndexOf("/");
+
+  if(slashIdx >= 0){
+    // Only trigger if slash is at start or preceded by a space
+    if(slashIdx === 0 || val[slashIdx - 1] === " "){
+      const query = beforeCursor.substring(slashIdx + 1);
+      // Don't show dropdown if there's a space after the query (user moved on)
+      if(!query.includes(" ")){
+        tagDropdownSlashPos = slashIdx;
+        tagDropdownIdx = 0;
+        showTagDropdown(query);
+        return;
+      }
+    }
+  }
+  hideTagDropdown();
 });
 
 /* Voice Input using Web Speech API */
