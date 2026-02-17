@@ -382,9 +382,11 @@ html[data-theme="light"] .iconBtn.danger{ background: rgba(239,68,68,.06); }
 
 /* Input */
 .addRow{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-.newTaskWrap{position:relative;flex:1;display:flex;align-items:center;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.12);padding-right:6px}
+.newTaskWrap{position:relative;flex:1;display:flex;align-items:center;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.12);padding-right:6px;transition:border-color .15s,box-shadow .15s}
 html[data-theme="light"] .newTaskWrap{background:rgba(255,255,255,.92)}
-.newTaskWrap input{flex:1;width:100%;border:none!important;background:transparent!important;outline:none}
+.newTaskWrap:focus-within{border-color:rgba(215,176,122,.30);box-shadow:0 0 0 4px rgba(215,176,122,.18)}
+html[data-theme="light"] .newTaskWrap:focus-within{border-color:rgba(215,176,122,.45);box-shadow:0 0 0 4px rgba(215,176,122,.12)}
+.newTaskWrap input{flex:1;width:100%;border:none!important;background:transparent!important;outline:none!important;box-shadow:none!important}
 .newTaskTagChip{display:inline-flex;align-items:center;gap:3px;background:rgba(168,130,255,.15);color:rgb(168,130,255);font-size:11px;font-weight:700;padding:3px 6px 3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;max-width:140px;overflow:hidden}
 html[data-theme="light"] .newTaskTagChip{background:rgba(128,90,213,.12);color:rgb(108,70,193)}
 .newTaskTagX{cursor:pointer;font-size:14px;line-height:1;padding:0 2px;opacity:.7}
@@ -7561,7 +7563,7 @@ function showTagDropdown(filter){
   });
   const hint = document.createElement("div");
   hint.className = "tagDropdownHint";
-  hint.textContent = "↑↓ to navigate, Enter to select, Esc to dismiss";
+  hint.textContent = "↑↓ navigate, Tab/Enter select, Esc dismiss";
   dd.appendChild(hint);
   dd.style.display = "";
 }
@@ -7611,6 +7613,12 @@ $("newText").addEventListener("keydown",(e)=>{
 
   if(isOpen){
     const items = dd.querySelectorAll(".tagDropdownItem");
+    const getFilteredTags = () => {
+      const filter = $("newText").value.substring(tagDropdownSlashPos + 1);
+      return (state.data.perspectives || []).filter(t =>
+        !filter || t.toLowerCase().includes(filter.toLowerCase())
+      );
+    };
     if(e.key === "ArrowDown"){
       e.preventDefault();
       tagDropdownIdx = Math.min(tagDropdownIdx + 1, items.length - 1);
@@ -7619,22 +7627,29 @@ $("newText").addEventListener("keydown",(e)=>{
     }
     if(e.key === "ArrowUp"){
       e.preventDefault();
-      tagDropdownIdx = Math.max(tagDropdownIdx - 1, 0);
+      tagDropdownIdx = Math.max(tagDropdownIdx - 1, -1);
       items.forEach((el, i) => el.classList.toggle("active", i === tagDropdownIdx));
       return;
     }
-    if(e.key === "Enter"){
-      e.preventDefault();
-      if(tagDropdownIdx >= 0 && tagDropdownIdx < items.length){
-        const tags = (state.data.perspectives || []).filter(t => {
-          const filter = $("newText").value.substring(tagDropdownSlashPos + 1);
-          return !filter || t.toLowerCase().includes(filter.toLowerCase());
-        });
+    if(e.key === "Tab"){
+      if(tagDropdownIdx >= 0){
+        e.preventDefault();
+        const tags = getFilteredTags();
         if(tags[tagDropdownIdx]) selectTagFromDropdown(tags[tagDropdownIdx]);
       } else {
         hideTagDropdown();
       }
       return;
+    }
+    if(e.key === "Enter"){
+      if(tagDropdownIdx >= 0 && tagDropdownIdx < items.length){
+        e.preventDefault();
+        const tags = getFilteredTags();
+        if(tags[tagDropdownIdx]) selectTagFromDropdown(tags[tagDropdownIdx]);
+        return;
+      }
+      // Nothing selected — fall through to normal Enter behavior
+      hideTagDropdown();
     }
     if(e.key === "Escape"){
       e.preventDefault();
@@ -7667,7 +7682,7 @@ $("newText").addEventListener("input", () => {
       // Don't show dropdown if there's a space after the query (user moved on)
       if(!query.includes(" ")){
         tagDropdownSlashPos = slashIdx;
-        tagDropdownIdx = 0;
+        tagDropdownIdx = -1;
         showTagDropdown(query);
         return;
       }
