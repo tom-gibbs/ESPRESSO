@@ -6308,8 +6308,8 @@ function renderList(){
   const showDoneUI = (state.page==="list" && state.view==="done");
   $("listTopRow").style.display = showDoneUI ? "" : "none";
 
-  // Perspective mode: show group cards or drill-in
-  if(perspectiveMode && state.view === "active" && !isCoworkMode()){
+  // Perspective mode: show group cards or drill-in (active + paused)
+  if(perspectiveMode && (state.view === "active" || state.view === "paused") && !isCoworkMode()){
     if(perspectiveDrillTag !== null){
       renderPerspectiveDrillIn(ul);
     } else {
