@@ -402,7 +402,7 @@ html[data-theme="light"] .tagDropdownItem .tdDot{background:rgb(108,70,193)}
   padding:10px 24px 10px 12px;
   border-radius:999px;
   border:1px solid var(--line);
-  background:var(--card);
+  background:#11131a;
   color:var(--text);
   font-size:13px;
   font-weight:600;
@@ -416,9 +416,10 @@ html[data-theme="light"] .tagDropdownItem .tdDot{background:rgb(108,70,193)}
   background-repeat:no-repeat;
   background-position:right 8px center;
 }
-.inlineProjectSelect option{background:var(--card);color:var(--text)}
+.inlineProjectSelect option{background:#11131a;color:var(--text)}
+html[data-theme="light"] .inlineProjectSelect option{background:#ffffff}
 html[data-theme="light"] .inlineProjectSelect{
-  background:var(--card);
+  background:#ffffff;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 8px center;
@@ -574,10 +575,11 @@ html[data-theme="light"] .doneBtn.active{ background: rgba(255,255,255,.92); }
 .colorPicker{
   position:fixed;z-index:10002;
   display:none;padding:6px;gap:6px;
-  background:var(--paper);border:1px solid var(--line);
+  background:#11131a;border:1px solid var(--line);
   border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.3);
 }
 .colorPicker.on{display:flex}
+html[data-theme="light"] .colorPicker{background:#ffffff;box-shadow:0 8px 24px rgba(0,0,0,.12)}
 .colorOption{
   width:20px;height:20px;border-radius:999px;
   cursor:pointer;border:2px solid transparent;
@@ -762,7 +764,7 @@ html[data-theme="light"] .infoBtn:hover{ background: rgba(0,0,0,.04); }
 .shortcutsBox{
   width: min(560px, 92vw);
   max-height: calc(100vh - 80px);
-  background: var(--card);
+  background: #11131a;
   border: 1px solid var(--line);
   border-radius: 18px;
   display: flex;
@@ -983,7 +985,7 @@ html[data-theme="light"] .moveSelect{ background: rgba(255,255,255,.92); color: 
 
 /* Dependency Map */
 .depMapBox{
-  background:var(--paper);
+  background:#11131a;
   border-radius:var(--r-xl);
   padding:20px;
   width:min(900px, 94vw);
@@ -1599,7 +1601,7 @@ html[data-theme="light"] button.coworkActive{color:rgba(109,66,184,1);border-col
 .aiOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;z-index:10001;overflow-y:auto}
 .aiOverlay.on{display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
 .aiInner{width:100%;max-width:540px}
-.aiBox{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;max-height:80vh;overflow-y:auto}
+.aiBox{background:#11131a;border:1px solid var(--line);border-radius:22px;padding:24px;max-height:80vh;overflow-y:auto}
 html[data-theme="light"] .aiBox{background:#fff}
 .aiHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .aiHeader h3{margin:0;font-size:18px;font-weight:800}
@@ -1637,7 +1639,7 @@ html[data-theme="light"] .aiCard{background:rgba(255,255,255,.92)}
 .settingsOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;z-index:10001;overflow-y:auto}
 .settingsOverlay.on{display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}
 .settingsInner{width:100%;max-width:420px}
-.settingsBox{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px}
+.settingsBox{background:#11131a;border:1px solid var(--line);border-radius:22px;padding:24px}
 html[data-theme="light"] .settingsBox{background:#fff}
 .settingsHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
 .settingsHeader h3{margin:0;font-size:18px;font-weight:800}
