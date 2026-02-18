@@ -78,12 +78,14 @@ body{
     radial-gradient(900px 520px at 12% -10%, rgba(215,176,122,.20), transparent 62%),
     radial-gradient(900px 520px at 95% 10%, rgba(138,90,43,.16), transparent 58%),
     var(--bg);
+  background-attachment:fixed;
 }
 html[data-theme="light"] body{
   background:
     radial-gradient(900px 520px at 12% -10%, rgba(154,106,58,.10), transparent 62%),
     radial-gradient(900px 520px at 95% 10%, rgba(215,176,122,.20), transparent 58%),
     var(--bg);
+  background-attachment:fixed;
 }
 
 /* Container */
@@ -300,14 +302,14 @@ html[data-theme="light"] .depMapBtn:hover{background:rgba(0,0,0,.05)}
   min-width:320px;
   max-height:calc(100vh - 120px);
   overflow-y:auto;
-  background: linear-gradient(180deg, rgba(17,19,25,.92), rgba(17,19,25,.82));
+  background: #11131a;
   border:1px solid rgba(255,255,255,.12);
   border-radius:18px;
   box-shadow:0 40px 140px rgba(0,0,0,.65);
   padding:10px;
 }
 html[data-theme="light"] .projectMenu{
-  background: rgba(255,255,255,.96);
+  background: #ffffff;
   border:1px solid var(--line);
   box-shadow:0 30px 120px rgba(15,23,42,.18);
 }
@@ -955,14 +957,15 @@ html[data-theme="light"] .unlinkBtnIcon:hover{ background: rgba(239,68,68,.08); 
 .moveRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .moveSelect{
   border-radius:999px;border:1px solid var(--line);
-  background: rgba(255,255,255,.06);
+  background: #11131a;
   color: var(--text);
   padding: 10px 12px;
   font-size: 13px;
   outline:none;
   min-width: 220px;
 }
-html[data-theme="light"] .moveSelect{ background: rgba(255,255,255,.92); color: var(--text); }
+.moveSelect option{background:#11131a;color:var(--text)}
+html[data-theme="light"] .moveSelect, html[data-theme="light"] .moveSelect option{ background: #ffffff; color: var(--text); }
 
 .modalActions .right{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
 
@@ -1497,7 +1500,7 @@ html[data-theme="light"] .coworkProjectBtn{
 .coworkProjectMenu{
   position:relative;
   margin:-8px 0 12px;
-  background:rgba(17,19,25,.94);
+  background:#11131a;
   border:1px solid rgba(255,255,255,.12);
   border-radius:var(--r-md);
   box-shadow:0 12px 40px rgba(0,0,0,.5);
@@ -1505,7 +1508,7 @@ html[data-theme="light"] .coworkProjectBtn{
   z-index:10;
 }
 html[data-theme="light"] .coworkProjectMenu{
-  background:rgba(255,255,255,.96);
+  background:#ffffff;
   border:1px solid var(--line);
   box-shadow:0 8px 30px rgba(15,23,42,.12);
 }
