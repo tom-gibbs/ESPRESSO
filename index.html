@@ -2565,7 +2565,7 @@ function initTheme(){
 $("themeToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-theme");
   applyTheme(cur === "dark" ? "light" : "dark");
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 function applyCompact(compact){
@@ -2582,7 +2582,7 @@ function initCompact(){
 $("compactToggle").onclick = () => {
   const cur = document.documentElement.getAttribute("data-compact");
   applyCompact(cur !== "true");
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 /* =========================================================
@@ -2650,7 +2650,7 @@ $("compactVisToggle").onclick = () => {
   const next = !cur;
   applyCompactVis(next);
   $("compactVisToggle").classList.toggle("on", next);
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 // Streamline button visibility toggle
@@ -2670,7 +2670,7 @@ $("focusVisToggle").onclick = () => {
   const next = !cur;
   applyFocusVis(next);
   $("focusVisToggle").classList.toggle("on", next);
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 // Streamline functions
@@ -2680,7 +2680,7 @@ function applyStreamline(limit){
   updateStreamlineBtn();
   closeStreamlinePopover();
   renderAll();
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 }
 function initStreamline(){
   try{
@@ -2779,7 +2779,7 @@ function togglePerspectiveMode(){
   try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
   updatePerspectiveBtn();
   renderAll();
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 }
 function updatePerspectiveBtn(){
   const btn = $("perspectiveBtn");
@@ -3061,7 +3061,7 @@ $("micVisToggle").onclick = () => {
   const next = !cur;
   applyMicVis(next);
   $("micVisToggle").classList.toggle("on", next);
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 // Deps button auto-hide (show only when project has dependencies)
@@ -3094,7 +3094,7 @@ $("depsAlwaysToggle").onclick = () => {
   try{ localStorage.setItem(DEPS_ALWAYS_KEY, next ? "true" : "false"); }catch{}
   $("depsAlwaysToggle").classList.toggle("on", next);
   updateDepsBtnVis();
-  if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
 /* =========================================================
@@ -3438,6 +3438,8 @@ const projectMenuList = $("projectMenuList");
 let saveTimer = null;
 let hasLoaded = false;
 let lastSavedUnix = 0;
+let localDirty = false;      // true when local edits haven't been saved+pushed yet
+let coworkLocalDirty = false; // same for cowork mode
 
 /* =========================================================
    STATUS
@@ -3644,7 +3646,7 @@ function detectAndBreakCycles(projects){
   const allTasksMap = new Map();
   for(const pid of Object.keys(projects)){
     const proj = projects[pid];
-    for(const t of [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week]){
+    for(const t of [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week, ...(proj.done_history || [])]){
       allTasksMap.set(taskKey(t), t);
     }
   }
@@ -3706,7 +3708,7 @@ function fixState(payload){
   payload.projects = fixed;
 // HARD FIX: ensure every task stored in a project has matching task.projectId
 for (const [pid, proj] of Object.entries(payload.projects)) {
-  for (const t of [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week]) {
+  for (const t of [...proj.active, ...proj.paused, ...proj.done_today, ...proj.done_week, ...(proj.done_history || [])]) {
     t.projectId = pid;
   }
 }
@@ -3826,8 +3828,9 @@ const MAX_UNDO = 30;
 let undoCapturePending = false;
 
 function captureUndo(){
-  if(isCoworkMode()) return;
-  const snapshot = JSON.stringify(state.data);
+  const snapshot = isCoworkMode()
+    ? JSON.stringify({ _cowork: true, data: coworkState.data })
+    : JSON.stringify(state.data);
   if(undoStack.length > 0 && undoStack[undoStack.length - 1] === snapshot) return;
   undoStack.push(snapshot);
   if(undoStack.length > MAX_UNDO) undoStack.shift();
@@ -3835,13 +3838,20 @@ function captureUndo(){
 }
 
 function restoreSnapshot(snapshot){
-  state.data = fixState(JSON.parse(snapshot));
-  ensureCurrentProject();
-  rolloverDoneBuckets();
-  enforceDependenciesAllProjects();
-  try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
-  if(firebaseUser && !isCoworkMode()){
-    pushPersonalToFirestore().catch(e => console.warn("Undo/redo Firestore push:", e));
+  const parsed = JSON.parse(snapshot);
+  if(parsed._cowork){
+    coworkState.data = fixCoworkData(parsed.data);
+    saveCoworkLocal();
+    if(firebaseUser) pushCoworkToFirestore().catch(e => console.warn("Undo/redo cowork push:", e));
+  } else {
+    state.data = fixState(parsed);
+    ensureCurrentProject();
+    rolloverDoneBuckets();
+    enforceDependenciesAllProjects();
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); } catch(e){}
+    if(firebaseUser && !isCoworkMode()){
+      pushPersonalToFirestore().catch(e => console.warn("Undo/redo Firestore push:", e));
+    }
   }
   renderAll();
 }
@@ -3849,7 +3859,10 @@ function restoreSnapshot(snapshot){
 function undo(){
   if(undoStack.length === 0) return;
   // Save current state to redo stack before restoring
-  redoStack.push(JSON.stringify(state.data));
+  const cur = isCoworkMode()
+    ? JSON.stringify({ _cowork: true, data: coworkState.data })
+    : JSON.stringify(state.data);
+  redoStack.push(cur);
   restoreSnapshot(undoStack.pop());
   setStatus("Undone");
 }
@@ -3857,12 +3870,16 @@ function undo(){
 function redo(){
   if(redoStack.length === 0) return;
   // Save current state to undo stack before restoring
-  undoStack.push(JSON.stringify(state.data));
+  const cur = isCoworkMode()
+    ? JSON.stringify({ _cowork: true, data: coworkState.data })
+    : JSON.stringify(state.data);
+  undoStack.push(cur);
   restoreSnapshot(redoStack.pop());
   setStatus("Redone");
 }
 
 function queueSave(){
+  localDirty = true;
   // Capture undo snapshot once per debounce batch
   if(!undoCapturePending){
     captureUndo();
@@ -3891,6 +3908,8 @@ async function saveNow({silent=false, force=false}={}){
     setStatus("SAVE FAILED (storage full?)");
     throw e;
   }
+
+  localDirty = false;
 
   // Push to Firestore when signed in
   if(firebaseUser && !isCoworkMode()){
@@ -3948,7 +3967,17 @@ async function loadAll(){
 
 document.addEventListener("visibilitychange", ()=>{
   if(document.visibilityState === "hidden" && hasLoaded){
+    // Flush any pending debounced save immediately
+    clearTimeout(saveTimer);
+    undoCapturePending = false;
     saveNow({silent:true}).catch(()=>{});
+    // Also flush cowork save if in cowork mode
+    if(isCoworkMode() && coworkLocalDirty){
+      clearTimeout(window._coworkSaveTimer);
+      if(firebaseUser && navigator.onLine){
+        pushCoworkToFirestore().catch(()=>{});
+      }
+    }
   }
 });
 </script>
@@ -5149,7 +5178,8 @@ function renderNotesMarkdown(raw){
   const html = marked.parse(raw);
   // Strip dangerous tags for safety (especially in cowork mode)
   return html.replace(/<(script|iframe|object|embed|form)[^>]*>[\s\S]*?<\/\1>/gi, "")
-             .replace(/<(script|iframe|object|embed|form)[^>]*\/?>/gi, "");
+             .replace(/<(script|iframe|object|embed|form)[^>]*\/?>/gi, "")
+             .replace(/\bon\w+\s*=/gi, "data-blocked="); // strip event handler attributes
 }
 
 function showNotesPreview(){
@@ -5592,6 +5622,15 @@ function deleteTask(task){
     }
   }
 
+  // Clean up globalOrder orphan
+  if(state.data.globalOrder){
+    for(const key of ["active","paused","done"]){
+      if(Array.isArray(state.data.globalOrder[key])){
+        state.data.globalOrder[key] = state.data.globalOrder[key].filter(k => k !== deadKey);
+      }
+    }
+  }
+
   enforceDependenciesAllProjects();
   stopEditing();
   queueSave();
@@ -5835,6 +5874,11 @@ function restoreFromDone(task){
   renderAll();
 }
 function clearDoneCurrent(){
+  const filter = isCoworkMode() ? coworkState.doneFilter : state.doneFilter;
+  // Clearing all history is permanent — require extra confirmation
+  if(filter === "all"){
+    if(!confirm("Permanently delete ALL completed task history? This cannot be undone.")) return;
+  }
   if(isCoworkMode()){
     const p = coworkProject();
     if(!p) return;
@@ -8237,7 +8281,7 @@ function importData(file){
       enforceDependenciesAllProjects();
       try{ localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); }catch{}
       renderAll();
-      if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+      if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
       setSyncStatus("Data imported successfully", "success");
     }catch(err){
       alert("Failed to import: " + err.message);
@@ -8260,7 +8304,7 @@ function restoreAutoBackup(){
     enforceDependenciesAllProjects();
     try{ localStorage.setItem(STATE_KEY, JSON.stringify(state.data)); }catch{}
     renderAll();
-    if(firebaseUser) pushPersonalToFirestore().catch(()=>{});
+    if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
     setSyncStatus("Auto-backup restored", "success");
   }catch(err){
     alert("Restore failed: " + err.message);
@@ -8442,6 +8486,8 @@ function startCoworkListener(){
   coworkUnsubscribe = db.collection("coworkSpaces").doc(sp.firestoreId)
     .onSnapshot(doc => {
       if(!doc.exists || !isCoworkMode()) return;
+      // Don't overwrite unsaved local edits — let the debounced save finish first
+      if(coworkLocalDirty) return;
       const remote = fixCoworkData(doc.data());
       const localRev = coworkState.data?.meta?.rev || 0;
       if(remote.meta.rev > localRev){
@@ -8475,11 +8521,15 @@ function stopCoworkPresence(){
 }
 
 function queueCoworkSave(){
+  // Capture undo snapshot for cowork mode
+  if(!undoCapturePending){ captureUndo(); undoCapturePending = true; }
+  coworkLocalDirty = true;
   saveCoworkLocal();
   clearTimeout(window._coworkSaveTimer);
   window._coworkSaveTimer = setTimeout(async () => {
+    undoCapturePending = false;
     if(firebaseUser && navigator.onLine){
-      try { await pushCoworkToFirestore(); } catch(e){ console.error("Cowork push error:", e); }
+      try { await pushCoworkToFirestore(); coworkLocalDirty = false; } catch(e){ console.error("Cowork push error:", e); }
     }
   }, 2000);
 }
@@ -8504,7 +8554,7 @@ function rolloverCoworkDoneBuckets(){
    ========================================================= */
 async function pushPersonalToFirestore(){
   if(!firebaseUser || !state.data) return;
-  state.data.meta.rev = (state.data.meta.rev || 0) + 1;
+  // Rev is already incremented by saveNow() — don't double-increment
   const payload = {
     meta: state.data.meta,
     projects: state.data.projects,
@@ -8533,7 +8583,7 @@ async function pullPersonalFromFirestore(){
     if(!doc.exists) return false;
     const remote = fixState(doc.data());
     const localRev = state.data.meta?.rev || 0;
-    if(remote.meta.rev >= localRev){
+    if(remote.meta.rev > localRev){
       // Auto-backup current state before overwriting
       autoBackupState();
       state.data = remote;
@@ -8580,6 +8630,8 @@ function startPersonalListener(){
   personalUnsubscribe = db.collection("personalData").doc(firebaseUser.uid)
     .onSnapshot(doc => {
       if(!doc.exists || isCoworkMode()) return;
+      // Don't overwrite unsaved local edits — let the debounced save finish first
+      if(localDirty) return;
       const remote = fixState(doc.data());
       if(remote.meta.rev > (state.data.meta?.rev || 0)){
         autoBackupState();
