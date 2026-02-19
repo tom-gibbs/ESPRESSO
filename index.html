@@ -2478,6 +2478,27 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
             <span class="toggleKnob"></span>
           </button>
         </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Cowork Button</span>
+          <button id="coworkVisToggle" class="toggleSwitch" type="button" title="Show cowork button in toolbar">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Perspective Button</span>
+          <button id="perspectiveVisToggle" class="toggleSwitch" type="button" title="Show perspective button in toolbar">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
+
+        <div class="settingsRow">
+          <span class="settingsLabel">Save Status</span>
+          <button id="statusVisToggle" class="toggleSwitch" type="button" title="Show save status text in toolbar">
+            <span class="toggleKnob"></span>
+          </button>
+        </div>
       </div>
 
       <div class="settingsAiSection">
@@ -2591,6 +2612,9 @@ $("compactToggle").onclick = () => {
 const COMPACT_VIS_KEY = "espresso_compact_vis_v1";
 const FOCUS_VIS_KEY = "espresso_focus_vis_v1";
 const MIC_VIS_KEY = "espresso_mic_vis_v1";
+const COWORK_VIS_KEY = "espresso_cowork_vis_v1";
+const PERSPECTIVE_VIS_KEY = "espresso_perspective_vis_v1";
+const STATUS_VIS_KEY = "espresso_status_vis_v1";
 const STREAMLINE_KEY = "espresso_streamline_v1";
 let streamlineLimit = 0;
 
@@ -2624,6 +2648,12 @@ function openSettings(){
   $("micVisToggle").classList.toggle("on", micVis);
   const depsAlways = localStorage.getItem(DEPS_ALWAYS_KEY) === "true";
   $("depsAlwaysToggle").classList.toggle("on", depsAlways);
+  const coworkVis = localStorage.getItem(COWORK_VIS_KEY) !== "false";
+  $("coworkVisToggle").classList.toggle("on", coworkVis);
+  const perspectiveVis = localStorage.getItem(PERSPECTIVE_VIS_KEY) !== "false";
+  $("perspectiveVisToggle").classList.toggle("on", perspectiveVis);
+  const statusVis = localStorage.getItem(STATUS_VIS_KEY) !== "false";
+  $("statusVisToggle").classList.toggle("on", statusVis);
   renderAiSetup();
   $("settingsOverlay").classList.add("on");
 }
@@ -2670,6 +2700,66 @@ $("focusVisToggle").onclick = () => {
   const next = !cur;
   applyFocusVis(next);
   $("focusVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
+};
+
+// Cowork button visibility toggle
+function applyCoworkVis(show){
+  $("coworkBtn").style.display = show ? "" : "none";
+  try{ localStorage.setItem(COWORK_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initCoworkVis(){
+  try{
+    const saved = localStorage.getItem(COWORK_VIS_KEY);
+    if(saved === "false"){ applyCoworkVis(false); return; }
+  }catch{}
+  applyCoworkVis(true);
+}
+$("coworkVisToggle").onclick = () => {
+  const cur = localStorage.getItem(COWORK_VIS_KEY) !== "false";
+  const next = !cur;
+  applyCoworkVis(next);
+  $("coworkVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
+};
+
+// Perspective button visibility toggle
+function applyPerspectiveVis(show){
+  $("perspectiveWrap").style.display = show ? "" : "none";
+  try{ localStorage.setItem(PERSPECTIVE_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initPerspectiveVis(){
+  try{
+    const saved = localStorage.getItem(PERSPECTIVE_VIS_KEY);
+    if(saved === "false"){ applyPerspectiveVis(false); return; }
+  }catch{}
+  applyPerspectiveVis(true);
+}
+$("perspectiveVisToggle").onclick = () => {
+  const cur = localStorage.getItem(PERSPECTIVE_VIS_KEY) !== "false";
+  const next = !cur;
+  applyPerspectiveVis(next);
+  $("perspectiveVisToggle").classList.toggle("on", next);
+  if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
+};
+
+// Save status visibility toggle
+function applyStatusVis(show){
+  $("saveStatus").style.display = show ? "" : "none";
+  try{ localStorage.setItem(STATUS_VIS_KEY, show ? "true" : "false"); }catch{}
+}
+function initStatusVis(){
+  try{
+    const saved = localStorage.getItem(STATUS_VIS_KEY);
+    if(saved === "false"){ applyStatusVis(false); return; }
+  }catch{}
+  applyStatusVis(true);
+}
+$("statusVisToggle").onclick = () => {
+  const cur = localStorage.getItem(STATUS_VIS_KEY) !== "false";
+  const next = !cur;
+  applyStatusVis(next);
+  $("statusVisToggle").classList.toggle("on", next);
   if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
 };
 
@@ -7696,13 +7786,11 @@ $("newText").addEventListener("keydown",(e)=>{
       return;
     }
     if(e.key === "Tab"){
-      if(tagDropdownIdx >= 0){
-        e.preventDefault();
-        const tags = getFilteredTags();
-        if(tags[tagDropdownIdx]) selectTagFromDropdown(tags[tagDropdownIdx]);
-      } else {
-        hideTagDropdown();
-      }
+      e.preventDefault();
+      const tags = getFilteredTags();
+      const idx = tagDropdownIdx >= 0 ? tagDropdownIdx : 0;
+      if(tags[idx]) selectTagFromDropdown(tags[idx]);
+      else hideTagDropdown();
       return;
     }
     if(e.key === "Enter"){
@@ -7884,6 +7972,9 @@ $("resetBtn").onclick = ()=>{
   initCompactVis();
   initFocusVis();
   initMicVis();
+  initCoworkVis();
+  initPerspectiveVis();
+  initStatusVis();
   if(typeof marked !== "undefined") marked.setOptions({ gfm: true, breaks: true });
   loadViewState();
 
@@ -8179,6 +8270,9 @@ $("forceSyncBtn").onclick = async () => {
           try{ localStorage.setItem(STREAMLINE_KEY, String(streamlineLimit)); }catch{}
           updateStreamlineBtn();
         }
+        if(rs.coworkVis !== undefined) applyCoworkVis(rs.coworkVis);
+        if(rs.perspectiveVis !== undefined) applyPerspectiveVis(rs.perspectiveVis);
+        if(rs.statusVis !== undefined) applyStatusVis(rs.statusVis);
       }
       renderAll();
       setSyncStatus("Synced — pulled latest from cloud", "success");
@@ -8570,7 +8664,10 @@ async function pushPersonalToFirestore(){
       micVis: localStorage.getItem(MIC_VIS_KEY) !== "false",
       depsAlways: localStorage.getItem(DEPS_ALWAYS_KEY) === "true",
       streamlineLimit: streamlineLimit,
-      perspectiveMode: perspectiveMode
+      perspectiveMode: perspectiveMode,
+      coworkVis: localStorage.getItem(COWORK_VIS_KEY) !== "false",
+      perspectiveVis: localStorage.getItem(PERSPECTIVE_VIS_KEY) !== "false",
+      statusVis: localStorage.getItem(STATUS_VIS_KEY) !== "false"
     }
   };
   await db.collection("personalData").doc(firebaseUser.uid).set(payload);
@@ -8615,6 +8712,9 @@ async function pullPersonalFromFirestore(){
         try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
         updatePerspectiveBtn();
       }
+      if(rs.coworkVis !== undefined) applyCoworkVis(rs.coworkVis);
+      if(rs.perspectiveVis !== undefined) applyPerspectiveVis(rs.perspectiveVis);
+      if(rs.statusVis !== undefined) applyStatusVis(rs.statusVis);
     }
     return true;
   } catch(e){
@@ -8661,6 +8761,9 @@ function startPersonalListener(){
             try{ localStorage.setItem(PERSPECTIVE_KEY, perspectiveMode ? "1" : "0"); }catch{}
             updatePerspectiveBtn();
           }
+          if(rs.coworkVis !== undefined) applyCoworkVis(rs.coworkVis);
+          if(rs.perspectiveVis !== undefined) applyPerspectiveVis(rs.perspectiveVis);
+          if(rs.statusVis !== undefined) applyStatusVis(rs.statusVis);
         }
         renderAll();
       }
