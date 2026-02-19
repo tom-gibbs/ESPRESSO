@@ -3741,6 +3741,21 @@ for (const [pid, proj] of Object.entries(payload.projects)) {
 
   if(!Array.isArray(payload.perspectives)) payload.perspectives = [];
 
+  // Reconcile: add any orphaned perspective tags found on tasks to the perspectives array
+  const knownPersp = new Set(payload.perspectives);
+  for(const pid of (payload.projectOrder || [])){
+    const p = payload.projects?.[pid];
+    if(!p) continue;
+    for(const list of [p.active, p.paused, p.done_today, p.done_week, p.done_history]){
+      for(const t of (list || [])){
+        if(t.perspective && !knownPersp.has(t.perspective)){
+          payload.perspectives.push(t.perspective);
+          knownPersp.add(t.perspective);
+        }
+      }
+    }
+  }
+
   return payload;
 }
 
