@@ -1671,6 +1671,13 @@ html[data-theme="light"] .aiSetupInfo code{background:rgba(0,0,0,.05)}
 .aiSetupInfo .aiModels{margin-top:8px;font-size:12px}
 .aiSetupInfo .aiModelTag{display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.06);margin:2px 2px;font-size:11px;font-family:monospace}
 html[data-theme="light"] .aiSetupInfo .aiModelTag{background:rgba(0,0,0,.05)}
+.settingsImportSection{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.importDesc{font-size:12px;line-height:1.5;color:var(--muted);padding:4px 0 8px}
+.importTextarea{width:100%;min-height:120px;border-radius:14px;padding:12px;font-family:'SF Mono',SFMono-Regular,monospace;font-size:12px;color:var(--text);background:rgba(0,0,0,.12);border:1px solid var(--line);resize:vertical;box-sizing:border-box}
+html[data-theme="light"] .importTextarea{background:rgba(0,0,0,.04)}
+.importActions{display:flex;gap:10px;margin-top:10px}
+.importCopyBtn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin-bottom:8px}
+.importCopyBtn:hover{color:var(--text);border-color:var(--accent)}
 .settingsDanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
 .settingsResetBtn{width:100%;padding:10px;border-radius:12px;border:1px solid #ef4444;background:none;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer}
 .settingsResetBtn:hover{background:rgba(239,68,68,.1)}
@@ -2509,6 +2516,22 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <div id="aiSetupInfo" class="aiSetupInfo"></div>
       </div>
 
+      <div class="settingsImportSection">
+        <div class="settingsRow" style="border-bottom:none;padding-bottom:4px">
+          <span class="settingsLabel">Import Tasks</span>
+        </div>
+        <div class="importDesc">Paste a JSON array of tasks. Each task needs at minimum a <code>"text"</code> field. Tasks are added to the current project.</div>
+        <button id="importCopyPrompt" class="importCopyBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy LLM Prompt
+        </button>
+        <textarea id="importTasksBox" class="importTextarea" placeholder='[&#10;  { "text": "My first task", "notes": "Details here" },&#10;  { "text": "My second task" }&#10;]'></textarea>
+        <div class="importActions">
+          <button id="importTasksBtn" class="subtle primary" type="button" style="flex:1">Import</button>
+          <button id="importUndoBtn" class="subtle" type="button" style="flex:1;display:none">Undo Import</button>
+        </div>
+      </div>
+
       <div class="settingsDanger">
         <button id="resetBtn" class="settingsResetBtn" type="button">Reset ESPRESSO</button>
       </div>
@@ -2655,6 +2678,9 @@ function openSettings(){
   const statusVis = localStorage.getItem(STATUS_VIS_KEY) !== "false";
   $("statusVisToggle").classList.toggle("on", statusVis);
   renderAiSetup();
+  $("importTasksBox").value = "";
+  $("importUndoBtn").style.display = "none";
+  $("importTasksBtn").textContent = "Import";
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -2761,6 +2787,76 @@ $("statusVisToggle").onclick = () => {
   applyStatusVis(next);
   $("statusVisToggle").classList.toggle("on", next);
   if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
+};
+
+// Import tasks from JSON
+$("importCopyPrompt").onclick = () => {
+  const projName = isCoworkMode()
+    ? (coworkProject()?.name || "Untitled")
+    : (getProject(state.projectId)?.name || "Untitled");
+  const prompt = "Format the tasks we've been discussing as a JSON array that I can paste into my task manager. " +
+    "The project is called \"" + projName + "\". " +
+    "Each task should be an object with these fields:\n" +
+    "- \"text\" (required) — the task title\n" +
+    "- \"notes\" (optional) — any extra details or context\n" +
+    "- \"perspective\" (optional) — a tag or category for the task\n" +
+    "- \"estimateMins\" (optional) — time estimate in minutes\n\n" +
+    "Return ONLY the raw JSON array, no markdown code fences, no other text.\n\n" +
+    "Example:\n" +
+    '[{"text": "Design login page", "notes": "Include OAuth flow"}, {"text": "Write API tests", "estimateMins": 30}]';
+  navigator.clipboard.writeText(prompt).then(() => {
+    const btn = $("importCopyPrompt");
+    const orig = btn.innerHTML;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+  }).catch(() => {});
+};
+
+$("importTasksBtn").onclick = () => {
+  const raw = $("importTasksBox").value.trim();
+  if(!raw) return;
+
+  let tasks;
+  try { tasks = JSON.parse(raw); } catch(e) { alert("Invalid JSON: " + e.message); return; }
+  if(!Array.isArray(tasks) || tasks.length === 0){ alert("Please paste a JSON array with at least one task."); return; }
+
+  const invalid = tasks.filter(t => !t || !t.text || !String(t.text).trim());
+  if(invalid.length > 0){ alert(invalid.length + " task(s) missing the required \"text\" field."); return; }
+
+  const targetPid = isCoworkMode() ? coworkState.projectId : state.projectId;
+  const proj = isCoworkMode() ? coworkProject() : getProject(targetPid);
+  if(!proj){ alert("No active project selected."); return; }
+
+  captureUndo();
+  undoCapturePending = true;
+
+  const count = tasks.length;
+  for(const t of tasks){
+    const newTask = normalizeTask({
+      id: uid(),
+      projectId: proj.id,
+      text: String(t.text).trim(),
+      createdAt: Date.now(),
+      notes: t.notes ? String(t.notes) : "",
+      perspective: t.perspective ? String(t.perspective) : "",
+      estimateMins: t.estimateMins || 0,
+      color: t.color || null
+    }, proj.id);
+    proj.active.push(newTask);
+  }
+
+  if(isCoworkMode()){ queueCoworkSave(); } else { queueSave(); }
+  renderAll();
+
+  $("importTasksBox").value = "";
+  $("importUndoBtn").style.display = "";
+  $("importTasksBtn").textContent = count + " tasks imported!";
+  setTimeout(() => { $("importTasksBtn").textContent = "Import"; }, 2000);
+};
+
+$("importUndoBtn").onclick = () => {
+  undo();
+  $("importUndoBtn").style.display = "none";
 };
 
 // Streamline functions
