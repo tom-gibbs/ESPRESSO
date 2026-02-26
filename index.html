@@ -5920,11 +5920,15 @@ function saveEstimate(task, raw){
   syncTimerWithEstimate(task);
 }
 function syncTimerWithEstimate(task){
-  // If the timer is tracking this task, reset it to the new estimate
   const tKey = taskKey(task);
   if(timerTaskKey === tKey){
+    // Timer is already tracking this task — reset to new estimate
     resetTimerToEstimate(task.estimateMins, tKey);
     updateHeaderTimer();
+    if(focusOverlay.classList.contains("on")) updateFocusTimerUI();
+  } else if(!timerRunning && task.estimateMins > 0){
+    // No timer running — pre-load this task's estimate so it's ready
+    resetTimerToEstimate(task.estimateMins, tKey);
     if(focusOverlay.classList.contains("on")) updateFocusTimerUI();
   }
 }
