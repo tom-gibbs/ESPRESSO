@@ -7536,10 +7536,11 @@ function updateFocusTimerUI(){
 
   $("focusTimerHint").style.display = "none";
 
-  if(timerRunning){
+  const isThisTask = timerTaskKey === taskKey(top);
+  if(timerRunning && isThisTask){
     const rem = Math.max(0, timerEndMs - Date.now());
     $("focusTimerText").textContent = fmt(rem);
-  }else if(timerRemainingMs>0){
+  }else if(timerRemainingMs>0 && isThisTask){
     $("focusTimerText").textContent = fmt(timerRemainingMs);
   }else{
     $("focusTimerText").textContent = fmt(est*60*1000);
@@ -8200,7 +8201,14 @@ $("focusBtn").onclick = (e) => {
   toggleStreamlinePopover();
 };
 $("focusClose").onclick = closeFocus;
-timerHeader.onclick = openFocus; // Click timer badge to open focus mode
+timerHeader.onclick = () => {
+  // Open focus on the task the timer is tracking, not just the top task
+  if(timerTaskKey){
+    const task = getTaskByKey(timerTaskKey);
+    if(task){ openFocusForTask(task); return; }
+  }
+  openFocus();
+};
 timerHeader.title = "Click to open focus mode";
 
 $("resetBtn").onclick = ()=>{
