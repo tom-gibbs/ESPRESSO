@@ -2522,6 +2522,10 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         </div>
         <div class="importDesc">Paste a JSON array of tasks. Each task needs at minimum a <code>"text"</code> field.</div>
         <select id="importProjectSelect" class="inlineProjectSelect" style="width:100%;margin-bottom:8px;box-sizing:border-box"></select>
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <select id="importTagSelect" class="inlineProjectSelect" style="flex:1;box-sizing:border-box"></select>
+          <input id="importNewTag" type="text" placeholder="New tag…" style="flex:1;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);padding:8px 12px;font-size:13px;color:var(--text);box-sizing:border-box">
+        </div>
         <button id="importCopyPrompt" class="importCopyBtn" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy LLM Prompt
@@ -2706,6 +2710,21 @@ function openSettings(){
       importSel.appendChild(opt);
     }
   }
+  // Populate import tag dropdown
+  const tagSel = $("importTagSelect");
+  tagSel.innerHTML = "";
+  const noneOpt = document.createElement("option");
+  noneOpt.value = "";
+  noneOpt.textContent = "No tag";
+  tagSel.appendChild(noneOpt);
+  const tags = state.data.perspectives || [];
+  for(const tag of tags){
+    const opt = document.createElement("option");
+    opt.value = tag;
+    opt.textContent = tag;
+    tagSel.appendChild(opt);
+  }
+  $("importNewTag").value = "";
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -2815,6 +2834,13 @@ $("statusVisToggle").onclick = () => {
 };
 
 // Import tasks from JSON
+$("importNewTag").addEventListener("input", () => {
+  if($("importNewTag").value.trim()) $("importTagSelect").value = "";
+});
+$("importTagSelect").addEventListener("change", () => {
+  $("importNewTag").value = "";
+});
+
 $("importCopyPrompt").onclick = () => {
   const selPid = $("importProjectSelect").value;
   const projName = isCoworkMode()
@@ -2855,6 +2881,15 @@ $("importTasksBtn").onclick = () => {
     : getProject(targetPid);
   if(!proj){ alert("No project selected."); return; }
 
+  // Determine tag: new tag input takes priority, then dropdown selection
+  const newTagVal = $("importNewTag").value.trim();
+  const selectedTag = newTagVal || $("importTagSelect").value;
+  // Create the perspective tag if it's new
+  if(newTagVal && !isCoworkMode()){
+    if(!Array.isArray(state.data.perspectives)) state.data.perspectives = [];
+    if(!state.data.perspectives.includes(newTagVal)) state.data.perspectives.push(newTagVal);
+  }
+
   captureUndo();
   undoCapturePending = true;
 
@@ -2866,7 +2901,7 @@ $("importTasksBtn").onclick = () => {
       text: String(t.text).trim(),
       createdAt: Date.now(),
       notes: t.notes ? String(t.notes) : "",
-      perspective: t.perspective ? String(t.perspective) : "",
+      perspective: t.perspective ? String(t.perspective) : selectedTag,
       estimateMins: t.estimateMins || 0,
       color: t.color || null
     }, proj.id);
