@@ -1678,6 +1678,12 @@ html[data-theme="light"] .importTextarea{background:rgba(0,0,0,.04)}
 .importActions{display:flex;gap:10px;margin-top:10px}
 .importCopyBtn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin-bottom:8px}
 .importCopyBtn:hover{color:var(--text);border-color:var(--accent)}
+.importHistoryItem{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);margin-top:8px;font-size:12px;color:var(--text)}
+html[data-theme="light"] .importHistoryItem{background:rgba(0,0,0,.03)}
+.importHistoryInfo{display:flex;flex-direction:column;gap:2px}
+.importHistoryMeta{color:var(--muted);font-size:11px}
+.importHistoryUndo{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer}
+.importHistoryUndo:hover{color:#ef4444;border-color:#ef4444}
 .settingsDanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
 .settingsResetBtn{width:100%;padding:10px;border-radius:12px;border:1px solid #ef4444;background:none;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer}
 .settingsResetBtn:hover{background:rgba(239,68,68,.1)}
@@ -2533,8 +2539,8 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <textarea id="importTasksBox" class="importTextarea" placeholder='[&#10;  { "text": "My first task", "notes": "Details here" },&#10;  { "text": "My second task" }&#10;]'></textarea>
         <div class="importActions">
           <button id="importTasksBtn" class="subtle primary" type="button" style="flex:1">Import</button>
-          <button id="importUndoBtn" class="subtle" type="button" style="flex:1;display:none">Undo Import</button>
         </div>
+        <div id="importHistory"></div>
       </div>
 
       <div class="settingsDanger">
@@ -2684,8 +2690,8 @@ function openSettings(){
   $("statusVisToggle").classList.toggle("on", statusVis);
   renderAiSetup();
   $("importTasksBox").value = "";
-  $("importUndoBtn").style.display = "none";
   $("importTasksBtn").textContent = "Import";
+  renderImportHistory();
   // Populate import project dropdown
   const importSel = $("importProjectSelect");
   importSel.innerHTML = "";
@@ -2834,6 +2840,71 @@ $("statusVisToggle").onclick = () => {
 };
 
 // Import tasks from JSON
+const IMPORT_HISTORY_KEY = "espresso_import_history_v1";
+
+function getImportHistory(){
+  try{
+    const raw = localStorage.getItem(IMPORT_HISTORY_KEY);
+    if(!raw) return [];
+    const all = JSON.parse(raw);
+    const todayStart = startOfDayLocal();
+    return all.filter(r => r.ts >= todayStart);
+  }catch{ return []; }
+}
+function saveImportHistory(records){
+  try{ localStorage.setItem(IMPORT_HISTORY_KEY, JSON.stringify(records)); }catch{}
+}
+
+function renderImportHistory(){
+  const container = $("importHistory");
+  const records = getImportHistory();
+  if(records.length === 0){ container.innerHTML = ""; return; }
+  let html = '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">Today\'s Imports</div>';
+  for(let i = records.length - 1; i >= 0; i--){
+    const r = records[i];
+    const time = new Date(r.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    html += '<div class="importHistoryItem" data-import-idx="' + i + '">' +
+      '<div class="importHistoryInfo">' +
+      '<span>' + r.count + ' task' + (r.count !== 1 ? 's' : '') + ' → ' + escapeHtml(r.projectName) + '</span>' +
+      '<span class="importHistoryMeta">' + time + (r.tag ? ' · ' + escapeHtml(r.tag) : '') + '</span>' +
+      '</div>' +
+      '<button class="importHistoryUndo" data-import-idx="' + i + '">Undo</button>' +
+      '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+  container.querySelectorAll(".importHistoryUndo").forEach(btn => {
+    btn.onclick = () => undoImport(parseInt(btn.dataset.importIdx, 10));
+  });
+}
+
+function undoImport(idx){
+  const records = getImportHistory();
+  const r = records[idx];
+  if(!r) return;
+  if(!confirm("Remove " + r.count + " imported task" + (r.count !== 1 ? "s" : "") + " from " + r.projectName + "?")) return;
+
+  captureUndo();
+  undoCapturePending = true;
+
+  const idsToRemove = new Set(r.taskIds);
+  if(isCoworkMode()){
+    const proj = coworkState.data?.projects[r.projectId];
+    if(proj) proj.active = proj.active.filter(t => !idsToRemove.has(t.id));
+    queueCoworkSave();
+  } else {
+    const proj = getProject(r.projectId);
+    if(proj) proj.active = proj.active.filter(t => !idsToRemove.has(t.id));
+    queueSave();
+  }
+
+  records.splice(idx, 1);
+  saveImportHistory(records);
+  renderAll();
+  renderImportHistory();
+}
+
 $("importNewTag").addEventListener("input", () => {
   if($("importNewTag").value.trim()) $("importTagSelect").value = "";
 });
@@ -2900,9 +2971,12 @@ $("importTasksBtn").onclick = () => {
   undoCapturePending = true;
 
   const count = tasks.length;
+  const importedIds = [];
   for(const t of tasks){
+    const newId = uid();
+    importedIds.push(newId);
     const newTask = normalizeTask({
-      id: uid(),
+      id: newId,
       projectId: proj.id,
       text: String(t.text).trim(),
       createdAt: Date.now(),
@@ -2914,18 +2988,25 @@ $("importTasksBtn").onclick = () => {
     proj.active.push(newTask);
   }
 
+  // Record import for today's history
+  const history = getImportHistory();
+  history.push({
+    ts: Date.now(),
+    projectId: proj.id,
+    projectName: proj.name,
+    count,
+    tag: selectedTag,
+    taskIds: importedIds
+  });
+  saveImportHistory(history);
+
   if(isCoworkMode()){ queueCoworkSave(); } else { queueSave(); }
   renderAll();
 
   $("importTasksBox").value = "";
-  $("importUndoBtn").style.display = "";
   $("importTasksBtn").textContent = count + " tasks imported!";
   setTimeout(() => { $("importTasksBtn").textContent = "Import"; }, 2000);
-};
-
-$("importUndoBtn").onclick = () => {
-  undo();
-  $("importUndoBtn").style.display = "none";
+  renderImportHistory();
 };
 
 // Streamline functions
