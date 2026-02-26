@@ -2846,6 +2846,11 @@ $("importCopyPrompt").onclick = () => {
   const projName = isCoworkMode()
     ? (coworkState.data?.projects[selPid]?.name || "Untitled")
     : (getProject(selPid)?.name || "Untitled");
+  const newTagVal = $("importNewTag").value.trim();
+  const selectedTag = newTagVal || $("importTagSelect").value;
+  const tagLine = selectedTag
+    ? "Set the \"perspective\" field to \"" + selectedTag + "\" on every task.\n\n"
+    : "";
   const prompt = "Format the tasks we've been discussing as a JSON array that I can paste into my task manager. " +
     "The project is called \"" + projName + "\". " +
     "Each task should be an object with these fields:\n" +
@@ -2853,6 +2858,7 @@ $("importCopyPrompt").onclick = () => {
     "- \"notes\" (optional) — any extra details or context\n" +
     "- \"perspective\" (optional) — a tag or category for the task\n" +
     "- \"estimateMins\" (optional) — time estimate in minutes\n\n" +
+    tagLine +
     "Return ONLY the raw JSON array, no markdown code fences, no other text.\n\n" +
     "Example:\n" +
     '[{"text": "Design login page", "notes": "Include OAuth flow"}, {"text": "Write API tests", "estimateMins": 30}]';
