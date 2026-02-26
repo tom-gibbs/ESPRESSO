@@ -2905,6 +2905,26 @@ function undoImport(idx){
   renderImportHistory();
 }
 
+function parseImportEstimate(t){
+  // Check common field name variants
+  const raw = t.estimateMins ?? t.estimateMinutes ?? t.estimate ?? t.duration ?? t.time ?? t.minutes ?? null;
+  if(raw === null || raw === undefined || raw === "") return 0;
+  if(typeof raw === "number") return Math.max(0, Math.round(raw));
+  const s = String(raw).trim().toLowerCase();
+  // "1h 30m" or "1h30m"
+  const hm = s.match(/^(\d+(?:\.\d+)?)\s*h\s*(?:(\d+)\s*m)?$/);
+  if(hm) return Math.round(Number(hm[1]) * 60 + (Number(hm[2]) || 0));
+  // "30m" or "30 min" or "30 mins" or "30 minutes"
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*(?:m|min|mins|minutes?)?\s*$/);
+  if(m) return Math.max(0, Math.round(Number(m[1])));
+  // "1.5h" or "1.5 hours"
+  const h = s.match(/^(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hours?)$/);
+  if(h) return Math.round(Number(h[1]) * 60);
+  // Plain number
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}
+
 $("importNewTag").addEventListener("input", () => {
   if($("importNewTag").value.trim()) $("importTagSelect").value = "";
 });
@@ -2982,7 +3002,7 @@ $("importTasksBtn").onclick = () => {
       createdAt: Date.now(),
       notes: t.notes ? String(t.notes) : "",
       perspective: t.perspective ? String(t.perspective) : selectedTag,
-      estimateMins: t.estimateMins || 0,
+      estimateMins: parseImportEstimate(t),
       color: t.color || null
     }, proj.id);
     proj.active.push(newTask);
