@@ -2520,7 +2520,8 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
         <div class="settingsRow" style="border-bottom:none;padding-bottom:4px">
           <span class="settingsLabel">Import Tasks</span>
         </div>
-        <div class="importDesc">Paste a JSON array of tasks. Each task needs at minimum a <code>"text"</code> field. Tasks are added to the current project.</div>
+        <div class="importDesc">Paste a JSON array of tasks. Each task needs at minimum a <code>"text"</code> field.</div>
+        <select id="importProjectSelect" class="inlineProjectSelect" style="width:100%;margin-bottom:8px;box-sizing:border-box"></select>
         <button id="importCopyPrompt" class="importCopyBtn" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy LLM Prompt
@@ -2681,6 +2682,30 @@ function openSettings(){
   $("importTasksBox").value = "";
   $("importUndoBtn").style.display = "none";
   $("importTasksBtn").textContent = "Import";
+  // Populate import project dropdown
+  const importSel = $("importProjectSelect");
+  importSel.innerHTML = "";
+  if(isCoworkMode()){
+    for(const pid of (coworkState.data?.projectOrder || [])){
+      const p = coworkState.data.projects[pid];
+      if(!p) continue;
+      const opt = document.createElement("option");
+      opt.value = pid;
+      opt.textContent = p.name;
+      if(pid === coworkState.projectId) opt.selected = true;
+      importSel.appendChild(opt);
+    }
+  } else {
+    for(const pid of state.data.projectOrder){
+      const p = state.data.projects[pid];
+      if(!p) continue;
+      const opt = document.createElement("option");
+      opt.value = pid;
+      opt.textContent = p.name;
+      if(pid === state.projectId) opt.selected = true;
+      importSel.appendChild(opt);
+    }
+  }
   $("settingsOverlay").classList.add("on");
 }
 function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
@@ -2791,9 +2816,10 @@ $("statusVisToggle").onclick = () => {
 
 // Import tasks from JSON
 $("importCopyPrompt").onclick = () => {
+  const selPid = $("importProjectSelect").value;
   const projName = isCoworkMode()
-    ? (coworkProject()?.name || "Untitled")
-    : (getProject(state.projectId)?.name || "Untitled");
+    ? (coworkState.data?.projects[selPid]?.name || "Untitled")
+    : (getProject(selPid)?.name || "Untitled");
   const prompt = "Format the tasks we've been discussing as a JSON array that I can paste into my task manager. " +
     "The project is called \"" + projName + "\". " +
     "Each task should be an object with these fields:\n" +
@@ -2823,9 +2849,11 @@ $("importTasksBtn").onclick = () => {
   const invalid = tasks.filter(t => !t || !t.text || !String(t.text).trim());
   if(invalid.length > 0){ alert(invalid.length + " task(s) missing the required \"text\" field."); return; }
 
-  const targetPid = isCoworkMode() ? coworkState.projectId : state.projectId;
-  const proj = isCoworkMode() ? coworkProject() : getProject(targetPid);
-  if(!proj){ alert("No active project selected."); return; }
+  const targetPid = $("importProjectSelect").value;
+  const proj = isCoworkMode()
+    ? coworkState.data?.projects[targetPid]
+    : getProject(targetPid);
+  if(!proj){ alert("No project selected."); return; }
 
   captureUndo();
   undoCapturePending = true;
