@@ -6430,10 +6430,20 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
   textRow.className="textRow";
 
   if(editing.id===task.id && editing.kind==="text"){
+    const applyTextEdit = (v) => {
+      let t = v.trim();
+      if(!t) return;
+      let rank = null;
+      const rm = t.match(/\((\d+)\)\s*$/);
+      if(rm){ rank = parseInt(rm[1], 10); t = t.replace(/\s*\(\d+\)\s*$/, "").trim(); }
+      if(!t) return;
+      updateTaskField(task, "text", t);
+      if(rank !== null && rank >= 1) moveTaskToPosition(task, rank);
+    };
     textRow.appendChild(makeEditInput(editing.draft,{
-      onEnter:(v)=>{ if(v.trim()) updateTaskField(task,"text",v.trim()); stopEditing(); renderAll(); },
+      onEnter:(v)=>{ applyTextEdit(v); stopEditing(); renderAll(); },
       onEscape:()=>{ stopEditing(); renderAll(); },
-      onBlur:(v)=>{ if(v.trim()) updateTaskField(task,"text",v.trim()); stopEditing(); renderAll(); }
+      onBlur:(v)=>{ applyTextEdit(v); stopEditing(); renderAll(); }
     }));
   }else{
     const span = document.createElement("span");
@@ -7061,11 +7071,21 @@ function renderFocus(){
     inp.type = "text";
     inp.className = "focusMainInput";
     inp.value = top.text;
+    const applyFocusTextEdit = () => {
+      let t = inp.value.trim();
+      if(!t) return;
+      let rank = null;
+      const rm = t.match(/\((\d+)\)\s*$/);
+      if(rm){ rank = parseInt(rm[1], 10); t = t.replace(/\s*\(\d+\)\s*$/, "").trim(); }
+      if(!t) return;
+      if(t !== top.text){ top.text = t; }
+      if(rank !== null && rank >= 1) moveTaskToPositionInFocus(top, rank);
+      queueSave();
+    };
     inp.onkeydown = (e) => {
       if(e.key === "Enter"){
         e.preventDefault();
-        const newText = inp.value.trim();
-        if(newText){ top.text = newText; queueSave(); }
+        applyFocusTextEdit();
         focusEditing.field = null;
         renderFocus();
         renderAll();
@@ -7076,10 +7096,10 @@ function renderFocus(){
       }
     };
     inp.onblur = () => {
-      const newText = inp.value.trim();
-      if(newText && newText !== top.text){ top.text = newText; queueSave(); renderAll(); }
+      applyFocusTextEdit();
       focusEditing.field = null;
       renderFocus();
+      renderAll();
     };
     focusTextEl.appendChild(inp);
     setTimeout(() => { inp.focus(); inp.select(); }, 0);
