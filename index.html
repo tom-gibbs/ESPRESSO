@@ -1084,7 +1084,7 @@ html[data-theme="light"] .depMapContainer{background:rgba(0,0,0,.03)}
 }
 html[data-theme="light"] .focusOverlay{ background: rgba(15,23,42,.55); }
 .focusOverlay.on{display:block}
-.focusInner{height:100%;display:flex;align-items:center;justify-content:center;padding:22px}
+.focusInner{height:100%;display:flex;align-items:center;justify-content:center;padding:22px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .focusBox{
   width:min(920px,96vw);
   background: linear-gradient(180deg, rgba(17,19,25,.92), rgba(17,19,25,.82));
@@ -1993,6 +1993,20 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
   .doneToggle{padding:3px;gap:3px}
   .doneBtn{padding:8px 10px;font-size:12px}
   #clearDoneBtn{padding:8px 10px;font-size:12px}
+
+  /* Focus mode: allow scroll when content exceeds viewport */
+  .focusInner{align-items:flex-start}
+  .focusBox{margin:auto 0}
+
+  /* Project menu: clamp to viewport */
+  .projectMenu{left:2vw !important;right:2vw;width:auto}
+
+  /* Streamline popover: fixed positioning on mobile */
+  .streamlinePopover{position:fixed;top:auto;bottom:calc(70px + env(safe-area-inset-bottom));right:12px;left:12px;min-width:unset}
+
+  /* Touch drag reorder visual feedback */
+  .touch-dragging{opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:9998;pointer-events:none}
+  .touch-drag-placeholder{border:2px dashed var(--accent);border-radius:var(--r-md);opacity:.4;pointer-events:none}
 }
 
 /* Extra small screens */
@@ -2732,8 +2746,9 @@ function openSettings(){
   }
   $("importNewTag").value = "";
   $("settingsOverlay").classList.add("on");
+  document.body.style.overflow = "hidden";
 }
-function closeSettings(){ $("settingsOverlay").classList.remove("on"); }
+function closeSettings(){ $("settingsOverlay").classList.remove("on"); document.body.style.overflow = ""; }
 
 $("settingsBtn").onclick = openSettings;
 $("settingsClose").onclick = closeSettings;
@@ -3352,7 +3367,12 @@ function openTagPicker(anchorEl, task){
   picker.appendChild(noneRow);
   // Position
   const rect = anchorEl.getBoundingClientRect();
-  picker.style.top = (rect.bottom + 4) + "px";
+  const pickerH = 200; // estimated max height
+  if(rect.bottom + 4 + pickerH > window.innerHeight){
+    picker.style.top = Math.max(4, rect.top - pickerH - 4) + "px";
+  } else {
+    picker.style.top = (rect.bottom + 4) + "px";
+  }
   picker.style.left = Math.min(rect.left, window.innerWidth - 180) + "px";
   document.body.appendChild(picker);
   activeTagPicker = picker;
@@ -4483,6 +4503,16 @@ function enableProjectMenuDrag(){
     const afterEl = getAfterProjectRow(projectMenuList, e.clientY);
     afterEl ? projectMenuList.insertBefore(dragging, afterEl) : projectMenuList.appendChild(dragging);
   };
+  const getAfterProjRowTouch = (cont, y) => {
+    const rows = [...cont.querySelectorAll(".projectRow:not(.touch-dragging):not(.allProjectsRow)")];
+    return rows.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if(offset < 0 && offset > closest.offset) return { offset, el };
+      return closest;
+    }, { offset: -Infinity, el: null }).el;
+  };
+  enableTouchDragReorder(projectMenuList, '.projectRow', '.handle', getAfterProjRowTouch, syncProjectMenuOrder);
 }
 
 function getAfterProjectRow(container, y){
@@ -5671,6 +5701,7 @@ function enableDragList(ul){
     const after=getAfterElement(ul,e.clientY);
     after ? ul.insertBefore(dragging,after) : ul.appendChild(dragging);
   };
+  enableTouchDragReorder(ul, 'li', '.handle', getAfterElement, syncOrderFromDOMList);
 }
 function getAfterElement(ul,y){
   const els=[...ul.querySelectorAll(".item:not(.dragging)")];
@@ -5681,6 +5712,75 @@ function getAfterElement(ul,y){
     return closest;
   },{offset:-Infinity,el:null}).el;
 }
+
+/* Touch-based drag reorder for mobile (long-press on handle to start) */
+function enableTouchDragReorder(container, itemSelector, handleSelector, getAfterFn, onDone){
+  if(!('ontouchstart' in window)) return;
+  let dragging = null, placeholder = null, startY = 0, offsetY = 0, longPressTimer = null;
+
+  container.addEventListener('touchstart', (e) => {
+    const handle = e.target.closest(handleSelector);
+    if(!handle) return;
+    const item = handle.closest(itemSelector);
+    if(!item || !container.contains(item)) return;
+    const touch = e.touches[0];
+    startY = touch.clientY;
+    longPressTimer = setTimeout(() => {
+      e.preventDefault();
+      dragging = item;
+      const rect = item.getBoundingClientRect();
+      offsetY = touch.clientY - rect.top;
+      // Create placeholder
+      placeholder = document.createElement('div');
+      placeholder.className = 'touch-drag-placeholder';
+      placeholder.style.height = rect.height + 'px';
+      item.parentNode.insertBefore(placeholder, item);
+      // Float the item
+      item.style.position = 'fixed';
+      item.style.left = rect.left + 'px';
+      item.style.width = rect.width + 'px';
+      item.style.top = (touch.clientY - offsetY) + 'px';
+      item.classList.add('touch-dragging');
+      document.body.style.overflow = 'hidden';
+    }, 300);
+  }, {passive: false});
+
+  container.addEventListener('touchmove', (e) => {
+    if(longPressTimer && Math.abs(e.touches[0].clientY - startY) > 10){
+      clearTimeout(longPressTimer); longPressTimer = null;
+    }
+    if(!dragging) return;
+    e.preventDefault();
+    const y = e.touches[0].clientY;
+    dragging.style.top = (y - offsetY) + 'px';
+    const after = getAfterFn(container, y);
+    if(after && after !== placeholder){
+      container.insertBefore(placeholder, after);
+    } else if(!after){
+      container.appendChild(placeholder);
+    }
+  }, {passive: false});
+
+  const endDrag = () => {
+    clearTimeout(longPressTimer); longPressTimer = null;
+    if(!dragging) return;
+    // Put item back where placeholder is
+    placeholder.parentNode.insertBefore(dragging, placeholder);
+    placeholder.remove();
+    dragging.style.position = '';
+    dragging.style.left = '';
+    dragging.style.width = '';
+    dragging.style.top = '';
+    dragging.classList.remove('touch-dragging');
+    document.body.style.overflow = '';
+    dragging = null;
+    placeholder = null;
+    if(onDone) onDone();
+  };
+  container.addEventListener('touchend', endDrag, {passive: true});
+  container.addEventListener('touchcancel', endDrag, {passive: true});
+}
+
 function syncOrderFromDOMList(){
   const ul = $("list");
   const items = [...ul.querySelectorAll(".item")];
@@ -5870,6 +5970,16 @@ function enableDragProjects(container){
     const after = getAfterTile(container, e.clientY);
     after ? container.insertBefore(dragging, after) : container.appendChild(dragging);
   };
+  const getAfterTileTouch = (cont, y) => {
+    const els = [...cont.querySelectorAll(".tile:not(.touch-dragging)")];
+    return els.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if(offset < 0 && offset > closest.offset) return { offset, el };
+      return closest;
+    }, { offset: -Infinity, el: null }).el;
+  };
+  enableTouchDragReorder(container, '.tile', '.tile', getAfterTileTouch, syncProjectOrderFromDOM);
 }
 function getAfterTile(container, y){
   const els=[...container.querySelectorAll(".tile:not(.dragging)")];
@@ -6354,8 +6464,13 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     });
     // Position picker using fixed positioning
     const rect = colorDot.getBoundingClientRect();
-    picker.style.top = (rect.bottom + 4) + "px";
-    picker.style.left = rect.left + "px";
+    const cpH = 40; // color picker row height
+    if(rect.bottom + 4 + cpH > window.innerHeight){
+      picker.style.top = Math.max(4, rect.top - cpH - 4) + "px";
+    } else {
+      picker.style.top = (rect.bottom + 4) + "px";
+    }
+    picker.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 200)) + "px";
     document.body.appendChild(picker);
     activeColorPicker = picker;
     // Close on outside click
@@ -6617,6 +6732,15 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     li.addEventListener("dragstart",()=>li.classList.add("dragging"));
     li.addEventListener("dragend",()=>{ li.classList.remove("dragging"); syncOrderFromDOMList(); });
   }
+
+  // Ctrl/Cmd+click anywhere on the item opens focus view
+  li.addEventListener("click", (e) => {
+    if(e.ctrlKey || e.metaKey){
+      e.preventDefault();
+      e.stopPropagation();
+      openFocusForTask(task);
+    }
+  });
 }
 
 /* =========================================================
@@ -6717,6 +6841,16 @@ function renderPerspectiveGroups(ul){
     }, { offset: -Infinity, el: null }).el;
     after ? ul.insertBefore(dragging, after) : ul.appendChild(dragging);
   };
+  const getAfterPerspective = (cont, y) => {
+    const cards = [...cont.querySelectorAll(".perspectiveCard:not(.touch-dragging)")];
+    return cards.reduce((closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if(offset < 0 && offset > closest.offset) return { offset, el };
+      return closest;
+    }, { offset: -Infinity, el: null }).el;
+  };
+  enableTouchDragReorder(ul, '.perspectiveCard', '.pcHandle', getAfterPerspective, () => syncPerspectiveOrderFromDOM(ul));
 }
 
 function syncPerspectiveOrderFromDOM(ul){
@@ -9624,6 +9758,7 @@ qsa(".bottomNavBtn").forEach(btn => {
         window.scrollTo({top:0,behavior:"smooth"});
         break;
       case "add":
+        if(state.page === "summary") setPage("list");
         $("newText").focus();
         window.scrollTo({top:0,behavior:"smooth"});
         break;
@@ -9634,7 +9769,7 @@ qsa(".bottomNavBtn").forEach(btn => {
         openCoworkModal();
         break;
       case "sync":
-        $("syncBtn").click();
+        openSyncModal();
         break;
     }
   };
@@ -10121,6 +10256,8 @@ detectOllama();
       activeWrap.classList.remove('swiped', 'swiping');
       activeWrap = null;
     }
+    isSwiping = false;
+    currentX = 0;
   }
 
   function getTaskFromItem(item){
@@ -10159,6 +10296,7 @@ detectOllama();
     currentX = 0;
     isSwiping = false;
     wrap._swipeStartX = startX;
+    wrap._swipeStartY = startY;
   }, {passive: true});
 
   document.addEventListener('touchmove', (e) => {
@@ -10169,7 +10307,7 @@ detectOllama();
     if(!item) return;
 
     const deltaX = e.touches[0].clientX - wrap._swipeStartX;
-    const deltaY = e.touches[0].clientY - startY;
+    const deltaY = e.touches[0].clientY - (wrap._swipeStartY || startY);
 
     // If scrolling vertically, cancel swipe
     if(!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)){
@@ -10265,6 +10403,7 @@ detectOllama();
     origRenderList();
     if(window.innerWidth > 640) return;
 
+    const currentView = (isCoworkMode() ? coworkState : state).view;
     qsa('.list > li').forEach(li => {
       if(li.querySelector('.swipeWrap')) return;
       const item = li.querySelector('.item');
@@ -10275,11 +10414,12 @@ detectOllama();
 
       const actions = document.createElement('div');
       actions.className = 'swipeActions';
-      actions.innerHTML = `
+      const doneBtn = currentView !== 'done' ? `
         <button class="swipeAction done swipeActionDone" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Done
-        </button>
+        </button>` : '';
+      actions.innerHTML = `${doneBtn}
         <button class="swipeAction delete swipeActionDelete" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           Delete
@@ -10316,30 +10456,28 @@ detectOllama();
   document.addEventListener('touchend', () => {
     if(document.body.classList.contains('pull-ready')){
       document.body.classList.remove('pull-ready');
-      if($("syncBtn")) $("syncBtn").click();
+      if($("forceSyncBtn")) $("forceSyncBtn").click();
     }
     isPulling = false;
   }, {passive: true});
 })();
 
-/* Tab swipe navigation */
+/* Tab swipe navigation — listen on the tab bar itself */
 (function(){
   const tabOrder = ['active', 'paused', 'done'];
   let tabSwipeStartX = 0;
 
-  const listEl = $('list');
-  if(!listEl) return;
+  const tabBar = $('summaryTabs');
+  if(!tabBar) return;
 
-  listEl.addEventListener('touchstart', (e) => {
-    if(e.target.closest('.item')) return;
+  tabBar.addEventListener('touchstart', (e) => {
     tabSwipeStartX = e.touches[0].clientX;
   }, {passive: true});
 
-  listEl.addEventListener('touchend', (e) => {
-    if(e.target.closest('.item')) return;
-    if(window.innerWidth > 640) return; // Only on mobile
+  tabBar.addEventListener('touchend', (e) => {
+    if(window.innerWidth > 640) return;
     const deltaX = e.changedTouches[0].clientX - tabSwipeStartX;
-    if(Math.abs(deltaX) < 80) return;
+    if(Math.abs(deltaX) < 60) return;
 
     const viewSource = isCoworkMode() ? coworkState : state;
     const currentIdx = tabOrder.indexOf(viewSource.view);
