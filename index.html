@@ -4783,16 +4783,19 @@ function enforceDependenciesForProject(proj){
       const i = proj.active.findIndex(x=>x.id===item.id);
       if(i>=0){
         const [m] = proj.active.splice(i,1);
+        m.autoPaused = true;
         proj.paused.push(m);
       }
     }
   }
   for(const item of [...proj.paused]){
-    if(!item.dependsOn || item.dependsOn.length===0) continue;
+    // Skip manually-paused tasks that have no dependencies
+    if((!item.dependsOn || item.dependsOn.length===0) && !item.autoPaused) continue;
     if(!isBlocked(item)){
       const i = proj.paused.findIndex(x=>x.id===item.id);
       if(i>=0){
         const [m] = proj.paused.splice(i,1);
+        delete m.autoPaused;
         proj.active.push(m);
       }
     }
@@ -6230,6 +6233,7 @@ function pauseWithReason(task){
   if(!loc || loc.listKey!=="active") return;
   proj.active.splice(loc.idx,1);
   task.pausedReason = String(reason ?? "");
+  delete task.autoPaused;
   proj.paused.push(task);
 
   stopEditing();
