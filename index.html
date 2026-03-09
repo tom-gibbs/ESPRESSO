@@ -2028,9 +2028,9 @@ html[data-theme="light"] .bottomNavBtn:active{background:rgba(0,0,0,.04)}
    LIFE PRIORITIES
    ========================================================= */
 .prioritiesBar{
-  display:flex;align-items:center;justify-content:center;
-  gap:6px;flex-wrap:wrap;
-  padding:0 18px 10px;
+  display:flex;align-items:center;
+  gap:5px;flex-wrap:wrap;
+  margin-top:5px;
   font-size:11px;font-weight:500;
   color:var(--muted);
   letter-spacing:.02em;
@@ -2128,11 +2128,13 @@ html[data-theme="light"] .priorityTasksBox{
 /* Life priority badge on tasks */
 .lifePriorityBadge{
   display:inline-flex;align-items:center;gap:3px;
-  font-size:10px;font-weight:600;
-  padding:2px 7px;border-radius:10px;
-  background:rgba(215,176,122,.14);border:1px solid rgba(215,176,122,.28);
-  color:var(--accent);white-space:nowrap;cursor:pointer;
-  text-transform:uppercase;letter-spacing:.04em;
+  background:rgba(215,176,122,.15);color:rgba(200,160,100,.9);
+  font-size:10px;font-weight:700;padding:1px 7px;border-radius:6px;
+  margin-left:6px;white-space:nowrap;max-width:120px;
+  overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+}
+html[data-theme="light"] .lifePriorityBadge{
+  background:rgba(180,130,60,.12);color:rgb(160,110,40);
 }
 
 /* =========================================================
@@ -2232,7 +2234,6 @@ html[data-theme="light"] .calendarTaskSelect{background:#f5f5f5}
   .calendarCell{min-height:52px;padding:5px;border-radius:8px}
   .calendarGoalText{-webkit-line-clamp:2}
   .calendarGrid{gap:4px}
-  .prioritiesBar{padding:0 12px 8px}
 }
 </style>
 </head>
@@ -2247,10 +2248,9 @@ html[data-theme="light"] .calendarTaskSelect{background:#f5f5f5}
         <div class="title">
           <h2>ESPRESSO</h2>
           <div class="subtitle">the calm before the brainstorm</div>
+          <div id="prioritiesBar" class="prioritiesBar" style="display:none"></div>
         </div>
       </div>
-
-      <div id="prioritiesBar" class="prioritiesBar" style="display:none"></div>
 
       <div class="spacer"></div>
 
@@ -2284,6 +2284,7 @@ html[data-theme="light"] .calendarTaskSelect{background:#f5f5f5}
               <button id="streamlineApply" class="streamlineChip">Go</button>
             </div>
             <button id="streamlineOff" class="streamlineOffBtn">Turn Off</button>
+            <button id="streamlineLock" class="streamlineOffBtn" style="margin-top:6px" title="Freeze the current visible tasks; as they complete the list shrinks rather than refilling">Lock list</button>
           </div>
         </div>
         <div style="position:relative;display:inline-flex" id="perspectiveWrap">
@@ -2926,7 +2927,10 @@ const PERSPECTIVE_VIS_KEY = "espresso_perspective_vis_v1";
 const STATUS_VIS_KEY = "espresso_status_vis_v1";
 const PRIORITIES_VIS_KEY = "espresso_priorities_vis_v1";
 const STREAMLINE_KEY = "espresso_streamline_v1";
+const STREAMLINE_LOCK_KEY = "espresso_streamline_lock_v1";
 let streamlineLimit = 0;
+let streamlineLockMode = false;
+let streamlineLockIds = [];
 
 function renderAiSetup(){
   const status = $("aiStatus");
@@ -3333,7 +3337,9 @@ $("importTasksBtn").onclick = () => {
 function applyStreamline(limit){
   streamlineLimit = limit;
   try{ localStorage.setItem(STREAMLINE_KEY, String(limit)); }catch{}
+  if(limit === 0 && streamlineLockMode){ streamlineLockMode = false; streamlineLockIds = []; try{ localStorage.removeItem(STREAMLINE_LOCK_KEY); }catch{} }
   updateStreamlineBtn();
+  updateStreamlineLockBtn();
   closeStreamlinePopover();
   renderAll();
   if(firebaseUser) pushPersonalToFirestore().catch(e => console.warn("Firestore push:", e));
@@ -3385,6 +3391,7 @@ function toggleStreamlinePopover(){
   if(pop.style.display === "none"){
     pop.style.display = "";
     updateStreamlineBtn();
+    updateStreamlineLockBtn();
     $("streamlineInput").value = "";
   } else {
     closeStreamlinePopover();
@@ -3409,12 +3416,45 @@ $("streamlineInput").addEventListener("keydown", (e) => {
   }
 });
 $("streamlineOff").onclick = () => applyStreamline(0);
+
+function applyStreamlineLock(on){
+  streamlineLockMode = on;
+  streamlineLockIds = [];
+  try{ on ? localStorage.setItem(STREAMLINE_LOCK_KEY,"true") : localStorage.removeItem(STREAMLINE_LOCK_KEY); }catch{}
+  if(on && streamlineLimit > 0){
+    const items = currentList();
+    const visible = items.slice(0, streamlineLimit);
+    streamlineLockIds = visible.map(t => t.id);
+  }
+  updateStreamlineLockBtn();
+  renderAll();
+}
+function updateStreamlineLockBtn(){
+  const btn = $("streamlineLock");
+  if(!btn) return;
+  if(streamlineLockMode){
+    btn.textContent = "Locked \u2713";
+    btn.style.color = "var(--accent)";
+    btn.style.borderColor = "var(--accent)";
+  } else {
+    btn.textContent = "Lock list";
+    btn.style.color = "";
+    btn.style.borderColor = "";
+  }
+}
+function initStreamlineLock(){
+  try{ streamlineLockMode = localStorage.getItem(STREAMLINE_LOCK_KEY) === "true"; }catch{}
+  if(!streamlineLockMode) streamlineLockIds = [];
+  updateStreamlineLockBtn();
+}
+$("streamlineLock").onclick = () => applyStreamlineLock(!streamlineLockMode);
 // Close popover on outside click
 document.addEventListener("click", (e) => {
   const wrap = $("streamlineWrap");
   if(wrap && !wrap.contains(e.target)) closeStreamlinePopover();
 });
 initStreamline();
+initStreamlineLock();
 
 // Perspective functions
 const PERSPECTIVE_KEY = "espresso_perspective_v1";
@@ -3738,10 +3778,11 @@ function renderPrioritiesBar(){
   });
   // Edit icon at end
   const editBtn = document.createElement("span");
-  editBtn.className = "prioritySep";
-  editBtn.style.cssText = "cursor:pointer;opacity:.5;margin-left:2px;font-size:13px";
+  editBtn.style.cssText = "cursor:pointer;opacity:.4;margin-left:2px;display:inline-flex;align-items:center;vertical-align:middle;transition:opacity .15s";
   editBtn.title = "Edit priorities";
-  editBtn.textContent = "✎";
+  editBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  editBtn.onmouseenter = () => { editBtn.style.opacity = ".8"; };
+  editBtn.onmouseleave = () => { editBtn.style.opacity = ".4"; };
   editBtn.onclick = (e) => { e.stopPropagation(); openPrioritiesOverlay(); };
   bar.appendChild(editBtn);
 }
@@ -4963,6 +5004,7 @@ function switchToProject(pid){
   if(pid === state.projectId) return;
   previousProjectId = state.projectId;
   state.projectId = pid;
+  streamlineLockIds = []; // clear snapshot; new project has different tasks
   saveViewState();
   renderAll();
 }
@@ -6498,8 +6540,20 @@ function moveTaskToPosition(task, newPos){
     // Remove from current position
     globalOrder.splice(currentIdx, 1);
 
-    // Insert at new position (clamp to valid range)
-    const targetIdx = Math.min(Math.max(0, newPos - 1), globalOrder.length);
+    // Insert at new position, skipping stale entries (tasks no longer in active/paused list)
+    // so that the visual position matches the user's intent
+    const validKeys = new Set();
+    for(const pid of state.data.projectOrder){
+      const p = getProject(pid);
+      if(p) for(const t of p[listKey]) validKeys.add(taskKey(t));
+    }
+    validKeys.delete(key); // exclude the task being moved
+    let targetIdx = globalOrder.length, visCount = 0;
+    for(let i = 0; i < globalOrder.length; i++){
+      if(validKeys.has(globalOrder[i])){
+        if(++visCount === newPos){ targetIdx = i; break; }
+      }
+    }
     globalOrder.splice(targetIdx, 0, key);
 
     state.data.globalOrder[orderKey] = globalOrder;
@@ -6779,10 +6833,23 @@ function addItem(text){
   if(rank !== null && rank >= 1){
     const insertIdx = Math.min(rank - 1, proj.active.length);
     proj.active.splice(insertIdx, 0, newTask);
-    // Also insert into globalOrder for All Projects view
+    // Also insert into globalOrder for All Projects view, skipping stale entries
     if(state.projectId === ALL_ID){
       const go = state.data.globalOrder.active = state.data.globalOrder.active || [];
-      go.splice(Math.min(rank - 1, go.length), 0, taskKey(newTask));
+      const nk = taskKey(newTask);
+      const addValidKeys = new Set();
+      for(const pid2 of state.data.projectOrder){
+        const p2 = getProject(pid2);
+        if(p2) for(const t2 of p2.active){ const k2 = taskKey(t2); if(k2 !== nk) addValidKeys.add(k2); }
+      }
+      let addVisCount = 0, addTargetIdx = go.length;
+      for(let i = 0; i < go.length; i++){
+        if(addValidKeys.has(go[i])){
+          if(addVisCount === rank - 1){ addTargetIdx = i; break; }
+          addVisCount++;
+        }
+      }
+      go.splice(addTargetIdx, 0, nk);
     }
   } else {
     proj.active.push(newTask);
@@ -7544,18 +7611,39 @@ function renderList(){
       renderListFooter();
       return;
     }
-    const displayItems = (streamlineLimit > 0 && state.view === "active") ? items.slice(0, streamlineLimit) : items;
+    let displayItems;
+    if(streamlineLimit > 0 && state.view === "active"){
+      if(streamlineLockMode && streamlineLockIds.length > 0){
+        const lockSet = new Set(streamlineLockIds);
+        displayItems = items.filter(t => lockSet.has(t.id));
+      } else {
+        displayItems = items.slice(0, streamlineLimit);
+      }
+    } else {
+      displayItems = items;
+    }
     displayItems.forEach((task,i)=>{
       const li = document.createElement("li");
       renderItem(li, task, i, {showHandle:true, showNum:true});
       ul.appendChild(li);
     });
-    if(streamlineLimit > 0 && state.view === "active" && items.length > streamlineLimit){
-      const hint = document.createElement("div");
-      hint.className = "streamlineHint";
-      hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
-      hint.onclick = () => applyStreamline(0);
-      ul.appendChild(hint);
+    if(streamlineLimit > 0 && state.view === "active"){
+      if(streamlineLockMode && streamlineLockIds.length > 0){
+        const lockSet = new Set(streamlineLockIds);
+        const doneCount = streamlineLockIds.filter(id => !items.some(t => t.id === id)).length;
+        if(doneCount > 0){
+          const hint = document.createElement("div");
+          hint.className = "streamlineHint";
+          hint.textContent = doneCount + " locked task" + (doneCount === 1 ? "" : "s") + " completed";
+          ul.appendChild(hint);
+        }
+      } else if(items.length > streamlineLimit){
+        const hint = document.createElement("div");
+        hint.className = "streamlineHint";
+        hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
+        hint.onclick = () => applyStreamline(0);
+        ul.appendChild(hint);
+      }
     }
     if(editing.id===null && (state.view==="active" || state.view==="paused")) enableDragList(ul);
     renderListFooter();
@@ -7629,18 +7717,38 @@ function renderList(){
     return;
   }
 
-  const displayItems = (streamlineLimit > 0 && state.view === "active") ? items.slice(0, streamlineLimit) : items;
+  let displayItems;
+  if(streamlineLimit > 0 && state.view === "active"){
+    if(streamlineLockMode && streamlineLockIds.length > 0){
+      const lockSet = new Set(streamlineLockIds);
+      displayItems = items.filter(t => lockSet.has(t.id));
+    } else {
+      displayItems = items.slice(0, streamlineLimit);
+    }
+  } else {
+    displayItems = items;
+  }
   displayItems.forEach((task,i)=>{
     const li = document.createElement("li");
     renderItem(li, task, i, {showHandle:true, showNum:true});
     ul.appendChild(li);
   });
-  if(streamlineLimit > 0 && state.view === "active" && items.length > streamlineLimit){
-    const hint = document.createElement("div");
-    hint.className = "streamlineHint";
-    hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
-    hint.onclick = () => applyStreamline(0);
-    ul.appendChild(hint);
+  if(streamlineLimit > 0 && state.view === "active"){
+    if(streamlineLockMode && streamlineLockIds.length > 0){
+      const doneCount = streamlineLockIds.filter(id => !items.some(t => t.id === id)).length;
+      if(doneCount > 0){
+        const hint = document.createElement("div");
+        hint.className = "streamlineHint";
+        hint.textContent = doneCount + " locked task" + (doneCount === 1 ? "" : "s") + " completed";
+        ul.appendChild(hint);
+      }
+    } else if(items.length > streamlineLimit){
+      const hint = document.createElement("div");
+      hint.className = "streamlineHint";
+      hint.textContent = (items.length - streamlineLimit) + " more task" + (items.length - streamlineLimit === 1 ? "" : "s") + " hidden";
+      hint.onclick = () => applyStreamline(0);
+      ul.appendChild(hint);
+    }
   }
 
   if(editing.id===null && (state.view==="active" || state.view==="paused")) enableDragList(ul);
