@@ -6538,10 +6538,9 @@ function moveTaskToPosition(task, newPos){
     const globalOrder = state.data.globalOrder[orderKey] || [];
     const key = taskKey(task);
     const currentIdx = globalOrder.indexOf(key);
-    if(currentIdx === -1) return;
 
-    // Remove from current position
-    globalOrder.splice(currentIdx, 1);
+    // Remove from current position (if tracked; if not, it will be inserted fresh)
+    if(currentIdx !== -1) globalOrder.splice(currentIdx, 1);
 
     // Insert at new position, skipping stale entries (tasks no longer in active/paused list)
     // so that the visual position matches the user's intent
@@ -7169,9 +7168,11 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
     numInput.style.padding = "2px 4px";
     numInput.style.fontSize = "inherit";
     numInput.style.textAlign = "center";
+    let numCommitted = false;
     numInput.onkeydown = (e) => {
       if(e.key === "Enter"){
         e.preventDefault();
+        numCommitted = true;
         const newPos = parseInt(numInput.value.trim(), 10);
         if(Number.isFinite(newPos) && newPos >= 1){
           moveTaskToPosition(task, newPos);
@@ -7180,11 +7181,13 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
         renderAll();
       }
       if(e.key === "Escape"){
+        numCommitted = true;
         stopEditing();
         renderAll();
       }
     };
     numInput.onblur = () => {
+      if(numCommitted) return;
       const newPos = parseInt(numInput.value.trim(), 10);
       if(Number.isFinite(newPos) && newPos >= 1 && newPos !== (i+1)){
         moveTaskToPosition(task, newPos);
