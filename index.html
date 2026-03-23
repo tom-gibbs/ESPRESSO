@@ -702,6 +702,93 @@ html[data-theme="light"] .depLine.blocking{
   background:rgba(122,176,215,.14);
 }
 
+/* Paused-until line */
+.pausedUntilLine{
+  display:flex;align-items:center;gap:8px;
+  border-color:rgba(96,165,250,.22) !important;
+  background:rgba(96,165,250,.08) !important;
+  color:rgba(255,255,255,.88) !important;
+}
+html[data-theme="light"] .pausedUntilLine{
+  border-color:rgba(37,99,235,.14) !important;
+  background:rgba(37,99,235,.05) !important;
+  color:rgba(31,35,40,.92) !important;
+}
+.pausedUntilClear{
+  margin-left:auto;background:none;border:none;color:var(--muted);
+  font-size:16px;cursor:pointer;padding:0 4px;line-height:1;opacity:.7;
+}
+.pausedUntilClear:hover{opacity:1;color:var(--text)}
+
+/* Pause dialog */
+.pauseDialogOverlay{
+  position:fixed;inset:0;z-index:10000;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+}
+.pauseDialogBox{
+  background:#11131a;border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--r-xl);padding:20px;
+  width:min(400px, 90vw);
+  box-shadow:0 40px 140px rgba(0,0,0,.65);
+}
+html[data-theme="light"] .pauseDialogBox{
+  background:#fff;border:1px solid var(--line);
+  box-shadow:0 30px 120px rgba(15,23,42,.18);
+}
+.pauseDialogTitle{
+  font-size:16px;font-weight:800;margin-bottom:14px;
+}
+.pauseDialogLabel{
+  display:block;font-size:12px;color:var(--muted);
+  font-weight:600;margin-bottom:6px;margin-top:12px;
+}
+.pauseDialogInput{
+  width:100%;padding:10px 12px;border-radius:var(--r-md);
+  border:1px solid var(--line);background:rgba(0,0,0,.12);
+  color:var(--text);outline:none;font-size:13px;
+}
+html[data-theme="light"] .pauseDialogInput{
+  background:rgba(255,255,255,.92);color:var(--text);
+}
+.pauseDialogDateRow{
+  display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;
+}
+.pauseDateChip{
+  padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;
+  border:1px solid var(--line);background:rgba(255,255,255,.04);
+  color:var(--text);cursor:pointer;
+}
+html[data-theme="light"] .pauseDateChip{
+  background:rgba(255,255,255,.92);
+}
+.pauseDateChip:hover{background:rgba(255,255,255,.08)}
+html[data-theme="light"] .pauseDateChip:hover{background:rgba(0,0,0,.04)}
+.pauseDateChip.active{
+  background:var(--accent);color:#000;border-color:var(--accent);
+}
+.pauseDialogActions{
+  display:flex;gap:8px;justify-content:flex-end;margin-top:16px;
+}
+
+/* Archived projects section */
+.archivedDivider{
+  padding:10px 10px 4px;cursor:pointer;user-select:none;
+  border-top:1px solid var(--line);margin-top:4px;
+}
+.archivedToggle{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.archivedToggle:hover{color:var(--text)}
+.archivedList{
+  display:flex;flex-direction:column;gap:4px;
+  padding:4px 0;
+}
+.archivedRow{opacity:.7}
+.archivedRow:hover{opacity:1}
+
 .editInput{
   width:100%;padding:10px 12px;border-radius:999px;border:1px solid var(--line);
   background:rgba(0,0,0,.16);color:var(--text);outline:none;font-size:14px;
@@ -4249,7 +4336,8 @@ function normalizeTask(t, projectId){
     collapsed: Boolean(t?.collapsed),
     createdBy: t?.createdBy || null,
     perspective: String(t?.perspective ?? ""),
-    lifePriority: String(t?.lifePriority ?? "")
+    lifePriority: String(t?.lifePriority ?? ""),
+    pausedUntil: (Number.isFinite(Number(t?.pausedUntil)) && Number(t.pausedUntil) > 0) ? Number(t.pausedUntil) : null
   };
 }
 function taskKey(task){ return `${task.projectId}:${task.id}`; }
@@ -4710,6 +4798,7 @@ function fixState(payload){
 
   if(!payload.projects || typeof payload.projects!=="object") payload.projects = {};
   if(!Array.isArray(payload.projectOrder)) payload.projectOrder = [];
+  if(!Array.isArray(payload.archivedOrder)) payload.archivedOrder = [];
 
   const fixed = {};
   for(const [pid, proj] of Object.entries(payload.projects)){
@@ -4726,8 +4815,10 @@ for (const [pid, proj] of Object.entries(payload.projects)) {
 
 
   payload.projectOrder = payload.projectOrder.filter(pid => payload.projects[pid]);
+  payload.archivedOrder = payload.archivedOrder.filter(pid => payload.projects[pid]);
+  const archivedSet = new Set(payload.archivedOrder);
   for(const pid of Object.keys(payload.projects)){
-    if(!payload.projectOrder.includes(pid)) payload.projectOrder.push(pid);
+    if(!payload.projectOrder.includes(pid) && !archivedSet.has(pid)) payload.projectOrder.push(pid);
   }
 
   if(!payload.projects.work){
@@ -4817,6 +4908,42 @@ function rolloverDoneBuckets(){
 }
 
 /* =========================================================
+   AUTO-UNPAUSE (pausedUntil)
+   ========================================================= */
+function checkPausedUntil(){
+  const now = Date.now();
+  let changed = false;
+  for(const pid of Object.keys(state.data.projects)){
+    const proj = state.data.projects[pid];
+    if(!proj || !proj.paused) continue;
+    for(let i = proj.paused.length - 1; i >= 0; i--){
+      const t = proj.paused[i];
+      if(t.pausedUntil && t.pausedUntil <= now){
+        // Don't auto-resume if still blocked by dependencies
+        if(t.dependsOn?.length){
+          const blocked = t.dependsOn.some(dk => {
+            const { projectId: dpid, id: did } = parseTaskKey(dk);
+            const dp = state.data.projects[dpid];
+            if(!dp) return false;
+            return !allTasks(dp).some(x => x.id === did && x.doneAt);
+          });
+          if(blocked) continue;
+        }
+        proj.paused.splice(i, 1);
+        t.pausedReason = "";
+        t.pausedUntil = null;
+        proj.active.push(t);
+        changed = true;
+      }
+    }
+  }
+  if(changed){
+    queueSave();
+    renderAll();
+  }
+}
+
+/* =========================================================
    SAVE / LOAD
    ========================================================= */
 function makePayload(){
@@ -4827,6 +4954,7 @@ function makePayload(){
     projects: state.data.projects,
     projectOrder: state.data.projectOrder,
     projects_order: state.data.projectOrder,
+    archivedOrder: state.data.archivedOrder || [],
     globalOrder: state.data.globalOrder,
     perspectives: state.data.perspectives || [],
     lifePriorities: state.data.lifePriorities || [],
@@ -4981,6 +5109,9 @@ async function loadAll(){
 }
 
 document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && hasLoaded){
+    checkPausedUntil();
+  }
   if(document.visibilityState === "hidden" && hasLoaded){
     // Flush any pending debounced save immediately
     clearTimeout(saveTimer);
@@ -5120,6 +5251,37 @@ function deleteProject(pid){
   renderAll();
 }
 
+function archiveProject(pid){
+  if(pid==="work" || pid==="personal"){
+    alert("Work and Personal cannot be archived.");
+    return;
+  }
+  const p = getProject(pid);
+  if(!p) return;
+  if(!confirm(`Archive project "${p.name}"? It will be hidden but preserved.`)) return;
+
+  state.data.projectOrder = state.data.projectOrder.filter(x=>x!==pid);
+  if(!Array.isArray(state.data.archivedOrder)) state.data.archivedOrder = [];
+  if(!state.data.archivedOrder.includes(pid)) state.data.archivedOrder.push(pid);
+
+  if(state.projectId === pid){
+    state.projectId = state.data.projectOrder[0] || "work";
+    saveViewState();
+  }
+  queueSave();
+  renderAll();
+}
+function unarchiveProject(pid){
+  const p = getProject(pid);
+  if(!p) return;
+
+  state.data.archivedOrder = (state.data.archivedOrder || []).filter(x=>x!==pid);
+  if(!state.data.projectOrder.includes(pid)) state.data.projectOrder.push(pid);
+
+  queueSave();
+  renderAll();
+}
+
 $("addProjectBtn").onclick = ()=>{
   addProject($("newProjectName").value);
   $("newProjectName").value="";
@@ -5127,6 +5289,7 @@ $("addProjectBtn").onclick = ()=>{
 };
 
 let projectReorderMode = false;
+let _archivedExpanded = false;
 $("reorderProjectsBtn").onclick = ()=>{
   projectReorderMode = !projectReorderMode;
   $("reorderProjectsBtn").classList.toggle("active", projectReorderMode);
@@ -5282,6 +5445,15 @@ function renderProjectMenu(filter = ""){
     const right = document.createElement("div");
     right.className = "right";
     right.appendChild(makeIconBtn("pencil", ()=>renameProject(pid), {title:"Rename"}));
+    if(pid !== "work" && pid !== "personal"){
+      const archBtn = document.createElement("button");
+      archBtn.className = "iconBtn";
+      archBtn.type = "button";
+      archBtn.title = "Archive";
+      archBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>`;
+      archBtn.onclick = (e) => { e.stopPropagation(); archiveProject(pid); };
+      right.appendChild(archBtn);
+    }
     right.appendChild(makeIconBtn("trash", ()=>deleteProject(pid), {danger:true, title:"Delete"}));
 
     // Drag events (only active in reorder mode)
@@ -5313,6 +5485,66 @@ function renderProjectMenu(filter = ""){
     noMatch.style.fontStyle = "italic";
     noMatch.textContent = "No matching projects";
     projectMenuList.appendChild(noMatch);
+  }
+
+  // Archived projects section
+  const archivedPids = (state.data.archivedOrder || []).filter(pid => {
+    const p = getProject(pid);
+    if(!p) return false;
+    if(!searchTerm) return true;
+    return p.name.toLowerCase().includes(searchTerm);
+  });
+  if(archivedPids.length > 0 && !projectReorderMode){
+    const divider = document.createElement("div");
+    divider.className = "archivedDivider";
+    divider.innerHTML = `<span class="archivedToggle" id="archivedToggle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> Archived (${archivedPids.length})</span>`;
+    projectMenuList.appendChild(divider);
+
+    const archivedList = document.createElement("div");
+    archivedList.className = "archivedList";
+    archivedList.id = "archivedProjectList";
+    archivedList.style.display = _archivedExpanded ? "flex" : "none";
+
+    for(const pid of archivedPids){
+      const p = getProject(pid);
+      if(!p) continue;
+      const row = document.createElement("div");
+      row.className = "projectRow archivedRow";
+      row.style.cursor = "pointer";
+
+      const btn = document.createElement("button");
+      btn.className = "projectNameBtn";
+      btn.type = "button";
+      btn.style.opacity = "0.7";
+      btn.innerHTML = escapeHtml(p.name);
+      btn.onclick = () => { closeProjectMenu(); switchToProject(pid); };
+
+      row.onclick = (e) => {
+        if(e.target.closest('.right') || e.target.closest('.iconBtn')) return;
+        closeProjectMenu(); switchToProject(pid);
+      };
+
+      const right = document.createElement("div");
+      right.className = "right";
+      const restoreBtn = document.createElement("button");
+      restoreBtn.className = "iconBtn";
+      restoreBtn.type = "button";
+      restoreBtn.title = "Restore";
+      restoreBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`;
+      restoreBtn.onclick = (e) => { e.stopPropagation(); unarchiveProject(pid); renderProjectMenu(filter); };
+      right.appendChild(restoreBtn);
+      right.appendChild(makeIconBtn("trash", ()=>deleteProject(pid), {danger:true, title:"Delete"}));
+
+      row.appendChild(btn);
+      row.appendChild(right);
+      archivedList.appendChild(row);
+    }
+    projectMenuList.appendChild(archivedList);
+
+    divider.onclick = () => {
+      _archivedExpanded = !_archivedExpanded;
+      archivedList.style.display = _archivedExpanded ? "flex" : "none";
+    };
   }
 }
 </script>
@@ -6870,19 +7102,96 @@ function addItem(text){
     }
   });
 }
+function showPauseDialog(task, callback){
+  // Remove any existing pause dialog
+  const old = document.getElementById("pauseDialog");
+  if(old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "pauseDialog";
+  overlay.className = "pauseDialogOverlay";
+
+  // Build date shortcut options
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const in2d = new Date(); in2d.setDate(in2d.getDate() + 2);
+  const in7d = new Date(); in7d.setDate(in7d.getDate() + 7);
+  const fmtDate = (d) => d.toISOString().slice(0,10);
+  const todayStr = fmtDate(new Date());
+
+  overlay.innerHTML = `<div class="pauseDialogBox">
+    <div class="pauseDialogTitle">Pause Task</div>
+    <label class="pauseDialogLabel">Reason / blocker (optional)</label>
+    <input id="pauseReasonInput" type="text" class="pauseDialogInput" placeholder="Why is this paused?" />
+    <label class="pauseDialogLabel">Resume automatically on</label>
+    <div class="pauseDialogDateRow">
+      <button type="button" class="pauseDateChip" data-date="${fmtDate(tomorrow)}">Tomorrow</button>
+      <button type="button" class="pauseDateChip" data-date="${fmtDate(in2d)}">In 2 days</button>
+      <button type="button" class="pauseDateChip" data-date="${fmtDate(in7d)}">In 1 week</button>
+    </div>
+    <input id="pauseUntilInput" type="date" class="pauseDialogInput" min="${todayStr}" />
+    <div class="pauseDialogActions">
+      <button type="button" id="pauseDialogCancel" class="subtle">Cancel</button>
+      <button type="button" id="pauseDialogConfirm" class="primary">Pause</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  const reasonInput = overlay.querySelector("#pauseReasonInput");
+  const dateInput = overlay.querySelector("#pauseUntilInput");
+  reasonInput.focus();
+
+  // Date chip shortcuts
+  overlay.querySelectorAll(".pauseDateChip").forEach(chip => {
+    chip.onclick = () => {
+      dateInput.value = chip.dataset.date;
+      overlay.querySelectorAll(".pauseDateChip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+    };
+  });
+
+  // Clear chip active state when date input changes manually
+  dateInput.addEventListener("input", () => {
+    overlay.querySelectorAll(".pauseDateChip").forEach(c => c.classList.remove("active"));
+  });
+
+  const close = () => overlay.remove();
+
+  overlay.querySelector("#pauseDialogCancel").onclick = close;
+  overlay.addEventListener("click", (e) => { if(e.target === overlay) close(); });
+
+  overlay.querySelector("#pauseDialogConfirm").onclick = () => {
+    const reason = reasonInput.value.trim();
+    const dateVal = dateInput.value;
+    let pausedUntil = null;
+    if(dateVal){
+      // Set to start of chosen day in local time
+      const d = new Date(dateVal + "T00:00:00");
+      pausedUntil = d.getTime();
+    }
+    close();
+    callback(reason, pausedUntil);
+  };
+
+  // Enter to confirm
+  reasonInput.addEventListener("keydown", (e) => { if(e.key === "Enter"){ e.preventDefault(); overlay.querySelector("#pauseDialogConfirm").click(); } });
+  dateInput.addEventListener("keydown", (e) => { if(e.key === "Enter"){ e.preventDefault(); overlay.querySelector("#pauseDialogConfirm").click(); } });
+}
+
 function pauseWithReason(task){
   if(isCoworkMode()){
     const p = coworkProject();
     if(!p) return;
-    const reason = prompt("Pause reason / blocker (optional):", "");
-    const idx = p.active.findIndex(x => x.id === task.id);
-    if(idx < 0) return;
-    p.active.splice(idx, 1);
-    task.pausedReason = String(reason ?? "");
-    p.paused.push(task);
-    stopEditing();
-    queueCoworkSave();
-    renderAll();
+    showPauseDialog(task, (reason, pausedUntil) => {
+      const idx = p.active.findIndex(x => x.id === task.id);
+      if(idx < 0) return;
+      p.active.splice(idx, 1);
+      task.pausedReason = String(reason ?? "");
+      task.pausedUntil = pausedUntil;
+      p.paused.push(task);
+      stopEditing();
+      queueCoworkSave();
+      renderAll();
+    });
     return;
   }
   const proj = getProject(task.projectId);
@@ -6892,17 +7201,19 @@ function pauseWithReason(task){
     alert("This task is blocked by a dependency. Clear the dependency first.");
     return;
   }
-  const reason = prompt("Pause reason / blocker (optional):", "");
-  const loc = findTaskInProject(proj, task.id);
-  if(!loc || loc.listKey!=="active") return;
-  proj.active.splice(loc.idx,1);
-  task.pausedReason = String(reason ?? "");
-  delete task.autoPaused;
-  proj.paused.push(task);
+  showPauseDialog(task, (reason, pausedUntil) => {
+    const loc = findTaskInProject(proj, task.id);
+    if(!loc || loc.listKey!=="active") return;
+    proj.active.splice(loc.idx,1);
+    task.pausedReason = String(reason ?? "");
+    task.pausedUntil = pausedUntil;
+    delete task.autoPaused;
+    proj.paused.push(task);
 
-  stopEditing();
-  saveNow({silent:true}).catch(()=>{});
-  renderAll();
+    stopEditing();
+    saveNow({silent:true}).catch(()=>{});
+    renderAll();
+  });
 }
 function resumeTask(task){
   if(isCoworkMode()){
@@ -6912,6 +7223,7 @@ function resumeTask(task){
     if(idx < 0) return;
     p.paused.splice(idx, 1);
     task.pausedReason = "";
+    task.pausedUntil = null;
     p.active.push(task);
     stopEditing();
     queueCoworkSave();
@@ -6929,6 +7241,7 @@ function resumeTask(task){
   if(!loc || loc.listKey!=="paused") return;
   proj.paused.splice(loc.idx,1);
   task.pausedReason = "";
+  task.pausedUntil = null;
   proj.active.push(task);
 
   enforceDependenciesAllProjects();
@@ -7371,6 +7684,28 @@ function renderItem(li, task, i, {showHandle=true, showNum=true, nested=false, i
         line.onclick=()=>{ editing.id=task.id; editing.kind="blocker"; editing.draft=task.pausedReason ?? ""; renderAll(); };
       }
       mainCol.appendChild(line);
+    }
+    // Show pausedUntil date if set
+    if(task.pausedUntil){
+      const untilLine = document.createElement("div");
+      untilLine.className = "blockerLine pausedUntilLine";
+      const d = new Date(task.pausedUntil);
+      const now = new Date();
+      const diffMs = task.pausedUntil - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      let relText = "";
+      if(diffDays <= 0) relText = "today";
+      else if(diffDays === 1) relText = "tomorrow";
+      else relText = `in ${diffDays} days`;
+      const dateStr = d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" });
+      untilLine.innerHTML = `<strong>Resumes:</strong> ${escapeHtml(dateStr)} (${escapeHtml(relText)})`;
+      const clearBtn = document.createElement("button");
+      clearBtn.className = "pausedUntilClear";
+      clearBtn.textContent = "\u00d7";
+      clearBtn.title = "Remove auto-resume date";
+      clearBtn.onclick = (e) => { e.stopPropagation(); task.pausedUntil = null; queueSave(); renderAll(); };
+      untilLine.appendChild(clearBtn);
+      mainCol.appendChild(untilLine);
     }
   }
 
@@ -8418,11 +8753,20 @@ function markDoneFromFocus(task){
 function pauseFromFocus(task){
   const prevPid = state.projectId;
   if(state.projectId === ALL_ID) state.projectId = task.projectId;
+  // pauseWithReason is now dialog-based (async callback)
   pauseWithReason(task);
-  focusedTaskKey = null;
-  state.projectId = prevPid;
-  renderFocus();
-  updateFocusTimerUI();
+  // Once the dialog resolves (user clicks Pause or Cancel), focus needs updating
+  // The simplest approach: watch for the dialog to be removed, then update focus
+  const obs = new MutationObserver(() => {
+    if(!document.getElementById("pauseDialog")){
+      obs.disconnect();
+      focusedTaskKey = null;
+      state.projectId = prevPid;
+      renderFocus();
+      updateFocusTimerUI();
+    }
+  });
+  obs.observe(document.body, { childList: true });
 }
 
 let focusOpenedFromDepMap = false;
@@ -9386,6 +9730,11 @@ $("resetBtn").onclick = ()=>{
   await loadAll();
   loadTimer();
   startTicking();
+
+  // Auto-unpause tasks whose pausedUntil has passed
+  checkPausedUntil();
+  // Check periodically (every 60s)
+  setInterval(checkPausedUntil, 60000);
 
   // Use saved page or default to list
   setPage(state.page || "list");
