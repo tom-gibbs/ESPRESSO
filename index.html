@@ -2401,6 +2401,9 @@ html[data-theme="light"] .calendarTaskSelect{background:#f5f5f5}
 
         <div id="sectionHeaderWrap" class="sectionHeaderWrap">
           <button id="sectionHeaderBtn" class="sectionHeaderBtn" type="button" title="Switch project">WORK</button>
+          <button id="archiveProjectBtn" class="depMapBtn" type="button" title="Archive project" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+          </button>
           <button id="depMapBtn" class="depMapBtn" type="button" title="Dependency map" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/><path d="M12 12v3"/></svg>
           </button>
@@ -5252,10 +5255,7 @@ function deleteProject(pid){
 }
 
 function archiveProject(pid){
-  if(pid==="work" || pid==="personal"){
-    alert("Work and Personal cannot be archived.");
-    return;
-  }
+  if(pid === ALL_ID) return;
   const p = getProject(pid);
   if(!p) return;
   if(!confirm(`Archive project "${p.name}"? It will be hidden but preserved.`)) return;
@@ -5357,6 +5357,7 @@ function projectDisplayName(pid){
 function updateSectionHeader(){
   const label = projectDisplayName(state.projectId).toUpperCase();
   $("sectionHeaderBtn").textContent = label;
+  $("archiveProjectBtn").style.display = (state.projectId && state.projectId !== ALL_ID) ? "" : "none";
 }
 function renderProjectMenu(filter = ""){
   projectMenuList.innerHTML = "";
@@ -5445,15 +5446,6 @@ function renderProjectMenu(filter = ""){
     const right = document.createElement("div");
     right.className = "right";
     right.appendChild(makeIconBtn("pencil", ()=>renameProject(pid), {title:"Rename"}));
-    if(pid !== "work" && pid !== "personal"){
-      const archBtn = document.createElement("button");
-      archBtn.className = "iconBtn";
-      archBtn.type = "button";
-      archBtn.title = "Archive";
-      archBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>`;
-      archBtn.onclick = (e) => { e.stopPropagation(); archiveProject(pid); };
-      right.appendChild(archBtn);
-    }
     right.appendChild(makeIconBtn("trash", ()=>deleteProject(pid), {danger:true, title:"Delete"}));
 
     // Drag events (only active in reorder mode)
@@ -5850,6 +5842,7 @@ function closeDepMap(){
   clearDependencyHighlights();
 }
 
+$("archiveProjectBtn").onclick = () => { if(state.projectId && state.projectId !== ALL_ID) archiveProject(state.projectId); };
 $("depMapBtn").onclick = openDepMap;
 $("depMapClose").onclick = closeDepMap;
 depMapOverlay.addEventListener("click",(e)=>{ if(e.target===depMapOverlay) closeDepMap(); });
